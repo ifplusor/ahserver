@@ -8,6 +8,11 @@ int ahp_msgbuf_init(ahp_msgbuf_t *buf, long size) {
     size = 4 * 1024; // 4k
   }
 
+  // 4 字节对齐
+  if (size & 0x03) {
+      size = (size | 0x03) + 1
+  }
+
   char *buffer = (char*) malloc(size);
   if (buffer == NULL) {
     return -1;
@@ -46,6 +51,11 @@ int ahp_msgbuf_append(ahp_msgbuf_t *buf, const char *data, unsigned long len) {
       size_t new_size = buf->size * 2;
       if (new_size < rlen + len) {
         new_size = rlen + len;
+      }
+
+      // 4 字节对齐
+      if (new_size & 0x03) {
+          new_size = (new_size | 0x03) + 1
       }
 
       char *new_buffer = (char*) realloc(buf->base, new_size);
