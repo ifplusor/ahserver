@@ -1,10 +1,13 @@
 # encoding=utf-8
 
-import asyncio
+import logging
+
 from libc.errno cimport *
 from .ahp cimport *
 from .protocol import HttpMethod
 from .request import HttpRequest
+
+logger = logging.getLogger()
 
 http_method_table = [
     "OPTIONS", "GET", "HEAD", "POST", "PUT", "DELETE", "TRACE", "CONNECT"
@@ -190,6 +193,7 @@ cdef class H2Parser:
                 #     # 其它错误
                 #     pass
 
+                logger.warning('encounter error when parser')
                 self._state = STATE_IDLE
 
                 return -1

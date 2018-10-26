@@ -35,8 +35,6 @@ class RootDispatcher(AsyncDispatcher):
     async def dispatch(self, request):
         # 为支持异步 http 路由，根调调度器需要异步环境
 
-        resp = NotImplemented
-
         for dispatcher in self.dispatchers:
             # 职责链需要顺序阻塞调用
             if isinstance(dispatcher, AsyncDispatcher):
@@ -46,8 +44,7 @@ class RootDispatcher(AsyncDispatcher):
 
             if resp != NotImplemented:
                 break
-
-        if resp == NotImplemented:
+        else:
             # report 404
             resp = HttpResponse(request, HttpStatus.Not_Found, {"Connection": "close"})
 

@@ -49,7 +49,7 @@ setup(
 
     packages=find_packages(),
     ext_modules=cythonize(h2parser),
-    install_requires=['uvloop'],
+    install_requires=['uvloop', 'hiredis'],
     extras_require={},
     entry_points={},
 

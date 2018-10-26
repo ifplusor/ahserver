@@ -42,7 +42,7 @@ class Http2Protocol(Protocol):
     def data_received(self, data):
         # 数据到达
 
-        # print(data)
+        # logger.debug(data)
 
         # 递送给 parser 解协议
         err = self.parser.feed(data, len(data))
@@ -62,7 +62,7 @@ class Http2Protocol(Protocol):
         # 收到 http 请求
         logger.info(request)
         if request.body is not None:
-            logger.info("Body:\n{}\n".format(request.body))
+            logger.info("Body: [{}]\n{}\n".format(len(request.body), request.body))
 
         # dispatch request
         dispatch_task = self.loop.create_task(RDispatcher.dispatch(request))
@@ -83,7 +83,7 @@ class Http2Protocol(Protocol):
             response = task.result()
 
             # write response
-            logger.debug('write response')
+            # logger.debug('write response')
             resp_msg = response.render()
             self.transport.write(resp_msg)
 

@@ -10,7 +10,7 @@ int ahp_msgbuf_init(ahp_msgbuf_t *buf, long size) {
 
   // 4 字节对齐
   if (size & 0x03) {
-      size = (size | 0x03) + 1
+      size = (size | 0x03) + 1;
   }
 
   char *buffer = (char*) malloc(size);
@@ -37,14 +37,19 @@ int ahp_msgbuf_append(ahp_msgbuf_t *buf, const char *data, unsigned long len) {
   size_t rlen = buf->end - buf->start;  // 缓冲区中剩余数据长度
 
   // 调整缓冲区
+
   if(rlen == 0) {
-    // 空，重置
+    // 空，重置 (尽量避免前一次新增的小块数据引起 memmove 调用)
     buf->start = buf->end = 0;
-  } else if (len > buf->size - buf->end) {
-    // 溢出，移动数据
-    memmove(buf->base, buf->base + buf->start, rlen);
-    buf->start = 0;
-    buf->end = rlen;
+  }
+
+  if (len > buf->size - buf->end) {
+    if (rlen != 0) {
+      // 溢出，移动数据
+      memmove(buf->base, buf->base + buf->start, rlen);
+      buf->start = 0;
+      buf->end = rlen;
+    }
 
     if (len > buf->size - rlen) {
       // 空间不足，扩充
@@ -55,7 +60,7 @@ int ahp_msgbuf_append(ahp_msgbuf_t *buf, const char *data, unsigned long len) {
 
       // 4 字节对齐
       if (new_size & 0x03) {
-          new_size = (new_size | 0x03) + 1
+          new_size = (new_size | 0x03) + 1;
       }
 
       char *new_buffer = (char*) realloc(buf->base, new_size);
