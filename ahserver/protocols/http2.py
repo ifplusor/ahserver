@@ -13,7 +13,8 @@ from ..http2.dispatchs import RDispatcher
 from ..http2.h2parser import H2Parser
 from ..http2.request import HttpRequest
 
-print_request = bool(os.getenv("ahserver_request_print", "false"))
+# settings from env
+print_request = os.getenv("ahserver_request_print", "false").lower() == "true"
 
 logger = logging.getLogger()
 
