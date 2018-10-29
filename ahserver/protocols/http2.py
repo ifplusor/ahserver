@@ -3,6 +3,7 @@
 __all__ = ["Http2Protocol"]
 
 import logging
+import os
 from asyncio import Task, CancelledError
 from asyncio.protocols import Protocol
 
@@ -11,6 +12,8 @@ from uvloop.loop import Loop, TCPTransport
 from ..http2.dispatchs import RDispatcher
 from ..http2.h2parser import H2Parser
 from ..http2.request import HttpRequest
+
+print_request = bool(os.getenv("ahserver_request_print", "false"))
 
 logger = logging.getLogger()
 
@@ -60,9 +63,11 @@ class Http2Protocol(Protocol):
 
     def on_message(self, request: HttpRequest):
         # 收到 http 请求
-        logger.info(request)
-        if request.body is not None:
-            logger.info("Body: [{}]\n{}\n".format(len(request.body), request.body))
+
+        if print_request:
+            logger.info(request)
+            if request.body is not None:
+                logger.info("Body: [{}]\n{}\n".format(len(request.body), request.body))
 
         # dispatch request
         dispatch_task = self.loop.create_task(RDispatcher.dispatch(request))

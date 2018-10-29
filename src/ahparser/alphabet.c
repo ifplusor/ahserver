@@ -1,6 +1,6 @@
 /**
  * file:         alphabet.c
- * author:       James Yin<ywhjames@hotmail.com>
+ * author:       James Yin<weihe.yin@istarshine.com>
  * description:  alphabet
  * reference:    rfc2616
  */

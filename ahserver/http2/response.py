@@ -3,8 +3,8 @@
 
 __all__ = ["Response", "HttpResponse"]
 
-from .request import HttpRequest
 from .protocol import HttpStatus
+from .request import HttpRequest
 from ..structures.dict import CaseInsensitiveDict
 
 

@@ -1,6 +1,6 @@
 /**
  * file:         parser.c
- * author:       James Yin<ywhjames@hotmail.com>
+ * author:       James Yin<weihe.yin@istarshine.com>
  * description:  simple http message parser
  * reference:    rfc1945, rfc2616
  */

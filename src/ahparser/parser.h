@@ -1,6 +1,6 @@
 /**
  * file: parser.h
- * author: James Yin<ywhjames@hotmail.com>
+ * author: James Yin<weihe.yin@istarshine.com>
  * description:
  *
  *   ahparser 是为 async io 设计的 http 报文解析器。ahparser 只专注于报文解析，
