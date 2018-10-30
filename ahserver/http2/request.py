@@ -50,6 +50,9 @@ class HttpRequest(Request):
         else:
             self._version = HttpVersion.parse(version)
 
+    def get_header(self, field_name):
+        return self.headers.get(field_name)
+
     def __str__(self):
         return "{} {} HTTP/{}\n".format(self.method, self.uri.decode(), self.version) + \
                "\n".join(["{}: {}".format(name, value.decode()) for name, value in self.headers.items()]) + \

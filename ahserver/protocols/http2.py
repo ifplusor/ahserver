@@ -15,6 +15,7 @@ from ..http2.request import HttpRequest
 
 # settings from env
 print_request = os.getenv("ahserver_request_print", "false").lower() == "true"
+print_response = os.getenv("ahserver_response_print", "false").lower() == "true"
 
 logger = logging.getLogger()
 
@@ -91,6 +92,10 @@ class Http2Protocol(Protocol):
             # write response
             # logger.debug('write response')
             resp_msg = response.render()
+
+            if print_response:
+                logger.info(resp_msg)
+
             self.transport.write(resp_msg)
 
             if response.will_close():
