@@ -1,10 +1,13 @@
 # encoding=utf-8
+from asyncio import CancelledError
 
 __all__ = ["HttpDispatcher", "AsyncDispatcher", "RDispatcher", "add_dispatcher"]
 
-from ..protocol import HttpStatus
+from ..protocol import HttpStatus, PopularHttpHeaders
 from ..request import HttpRequest
 from ..response import HttpResponse
+
+
 
 
 class HttpDispatcher:
@@ -37,16 +40,21 @@ class RootDispatcher(AsyncDispatcher):
 
         for dispatcher in self.dispatchers:
             # 职责链需要顺序阻塞调用
-            if isinstance(dispatcher, AsyncDispatcher):
-                resp = await dispatcher.dispatch(request)
-            else:
-                resp = dispatcher.dispatch(request)
+            try:
+                if isinstance(dispatcher, AsyncDispatcher):
+                    resp = await dispatcher.dispatch(request)
+                else:
+                    resp = dispatcher.dispatch(request)
+            except CancelledError as e:
+                raise e
+            except Exception as e:
+                resp = HttpResponse(request, HttpStatus.Internal_Server_Error, PopularHttpHeaders.connection_close)
 
             if resp != NotImplemented:
                 break
         else:
             # report 404
-            resp = HttpResponse(request, HttpStatus.Not_Found, {"Connection": "close"})
+            resp = HttpResponse(request, HttpStatus.Not_Found, PopularHttpHeaders.connection_close)
 
         return resp
 

@@ -1,7 +1,7 @@
 # encoding=utf-8
 
 
-__all__ = ["HttpMethod", "HttpVersion", "HttpStatus"]
+__all__ = ["HttpMethod", "HttpVersion", "HttpStatus", "PopularHttpHeaders"]
 
 from enum import Enum
 
@@ -48,7 +48,6 @@ class HttpVersion(Enum):
 
 
 class HttpStatus(Enum):
-
     # 1xx: 信息性 - 收到请求，继续处理
     Continue = (100, "Continue")
     Switching_Protocol = (101, "Switching Protocol")
@@ -83,3 +82,18 @@ class HttpStatus(Enum):
 
     def __str__(self):
         return "{} {}".format(self.value[0], self.value[1])
+
+
+class PopularHttpHeaders:
+    connection_close = {"Connection": "close"}
+
+    type_plain = {"Content-Type": "text/plain"}
+    type_html = {"Content-Type": "text/html"}
+    type_json = {"Content-Type": "application/json"}
+
+    @staticmethod
+    def union(*args):
+        headers = {}
+        for arg in args:
+            headers.update(arg)
+        return headers
