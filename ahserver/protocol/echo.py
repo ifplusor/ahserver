@@ -5,7 +5,6 @@ from uvloop.loop import TCPTransport
 
 
 class EchoProtocol(Protocol):
-
     def __init__(self):
         self.transport = None
 
@@ -23,4 +22,3 @@ class EchoProtocol(Protocol):
 
     def eof_received(self):
         print("received eof")
-

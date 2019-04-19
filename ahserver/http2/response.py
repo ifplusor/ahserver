@@ -1,101 +1,68 @@
 # encoding=utf-8
 
-
 __all__ = ["Response", "HttpResponse"]
 
-from .protocol import HttpStatus
-from .request import HttpRequest
-from ..structures.dict import CaseInsensitiveDict
+import six
 
+from abc import ABCMeta, abstractmethod
 
-class Response:
-    def __init__(self, connection=None):
-        self._connection = connection
-
-
-supported_encoding = dict()
+from .constant import LATIN1_ENCODING
+from .protocol import HttpStatus, HttpHeader
+from ..util.dict import CaseInsensitiveDict
 
 try:
-    import gzip
+    from typing import TYPE_CHECKING, Dict, Optional, Union
+except Exception:
+    TYPE_CHECKING = False
 
-    supported_encoding["gzip"] = gzip.compress
-except:
-    pass
+if TYPE_CHECKING:
+    from .request import HttpRequest
+    from .stream import HttpStream
+
+
+@six.add_metaclass(ABCMeta)
+class Response:
+    def __init__(self, stream=None):  # type: (Optional[HttpStream]) -> None
+        self._stream = stream
+
+    @property
+    def stream(self):
+        return self._stream
+
+    @abstractmethod
+    async def respond(self, stream):  # type: (HttpStream) -> Optional[None]
+        raise NotImplementedError()
 
 
 class HttpResponse(Response):
-
-    def __init__(self, request: HttpRequest, status=HttpStatus.OK, headers: dict = None, body=None):
-        super().__init__(request.connection)
+    def __init__(self, request, status=HttpStatus.OK, headers=None, body=None):
+        # type: (HttpRequest, Optional[Union[str, HttpStatus]], Optional[Dict[HttpHeader, str]], Optional[bytes]) -> None
+        super(HttpResponse, self).__init__(request.stream)
         self._request = request
 
         self.status = status
         self.headers = CaseInsensitiveDict(headers)
         self.body = body
 
-    def _check_encoding(self):
-        # use Content-Encoding first
-        use_encoding = self.headers.get("Content-Encoding")
-        if use_encoding is not None:
-            return use_encoding
+    def render_status_line(self):
+        # render status line
+        #   Status-Line = HTTP-Version SP Status-Code SP Reason-Phrase CRLF
+        status_line = "HTTP/{} {}\r\n".format(self._request.version, self.status).encode(LATIN1_ENCODING)
+        return status_line
 
-        # choose from Accept-Encoding
-        accept_encoding = self._request.get_header("Accept-Encoding")
-        if accept_encoding is not None:
-            # Accept-Encoding = "Accept-Encoding" ":" 1#( codings [ ";" "q" "=" qvalue ] )
-            # codings = ( content-coding | "*" )
+    def render_headers(self):
+        # render headers
+        header_dict = self.headers
+        headers = "".join(
+            ["{}: {}\r\n".format(field_name, field_value) for field_name, field_value in header_dict.items()]
+        ).encode(LATIN1_ENCODING)
+        return headers
 
-            encoding_list = filter(lambda x: x.strip(), accept_encoding.decode().split(","))
-
-            def format_encoding(e: str):
-                s = e.split(";q=")
-                if len(s) > 1:
-                    return s[0], float(s[1])
-                else:
-                    return s[0], 1.0
-
-            encoding_list = map(format_encoding, encoding_list)
-            encoding_list = sorted(encoding_list, key=lambda x: x[1], reverse=True)  # 稳定排序
-            for encoding in encoding_list:
-                # FIXME: when qvalue is 0
-                if encoding[0] in supported_encoding:
-                    use_encoding = encoding[0]
-                    break
-
-        return use_encoding
-
-    def render(self):
-        # Status-Line = HTTP-Version SP Status-Code SP Reason-Phrase CRLF
-        status_line = "HTTP/{} {} {}\r\n".format(self._request.version, self.status.value[0], self.status.value[1])
-
-        skipped_headers = {
-            "content-encoding"
-        }
-
-        headers = ""
-        for header in self.headers:
-            if header.lower() in skipped_headers:
-                continue
-            headers += "{}: {}\r\n".format(header, self.headers[header])
-
+    async def respond(self, stream):
+        msg = self.render_status_line() + self.render_headers() + b"\r\n"
         if self.body is not None:
-            # convert body to bytes
-            if isinstance(self.body, bytes):
-                body = self.body
-            else:
-                body = str(self.body).encode("utf-8")
-
-            # encode
-            encoding = self._check_encoding()
-            if encoding is not None:
-                body = supported_encoding[encoding](body)
-                headers += "{}: {}\r\n".format("Content-Encoding", encoding)
-
-            headers += "{}: {}\r\n".format("Content-Length", len(body))
-        else:
-            body = b""
-
-        return "{}{}\r\n".format(status_line, headers).encode("utf-8") + body
+            msg += self.body
+        return msg
 
     def will_close(self):
-        return self.headers.get("Connection", "") == "close"
+        return self.headers.get(HttpHeader.CONNECTION) == "close"

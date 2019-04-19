@@ -1,21 +1,33 @@
+/**
+ * file:         msgbuf.c
+ * author:       James Yin<ywhjames@hotmail.com>
+ * description:  message buffer
+ */
+
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
-#include "msgbuf.h"
 
+#include <ahparser/msgbuf.h>
 
-int ahp_msgbuf_init(ahp_msgbuf_t *buf, long size) {
+int ahp_msgbuf_init(ahp_msgbuf_t* buf, long size) {
+  if (buf == NULL) {
+    return EFAULT;
+  }
+
   if (size < 0) {
-    size = 4 * 1024; // 4k
+    size = 4 * 1024;  // 4k
   }
 
   // 4 字节对齐
   if (size & 0x03) {
-      size = (size | 0x03) + 1;
+    size = (size | 0x03) + 1;
   }
 
-  char *buffer = (char*) malloc(size);
+  char* buffer = (char*)malloc(size);
   if (buffer == NULL) {
-    return -1;
+    buf->base = NULL;
+    return ENOMEM;
   }
 
   buf->base = buffer;
@@ -25,20 +37,22 @@ int ahp_msgbuf_init(ahp_msgbuf_t *buf, long size) {
   return 0;
 }
 
+void ahp_msgbuf_free(ahp_msgbuf_t* buf) {
+  if (buf == NULL) {
+    return;
+  }
 
-void ahp_msgbuf_free(ahp_msgbuf_t *buf) {
   free(buf->base);
   buf->base = NULL;
   buf->size = buf->start = buf->end = 0;
 }
 
-
-int ahp_msgbuf_append(ahp_msgbuf_t *buf, const char *data, unsigned long len) {
+int ahp_msgbuf_append(ahp_msgbuf_t* buf, const char* data, unsigned long len) {
   size_t rlen = buf->end - buf->start;  // 缓冲区中剩余数据长度
 
   // 调整缓冲区
 
-  if(rlen == 0) {
+  if (rlen == 0) {
     // 空，重置 (尽量避免前一次新增的小块数据引起 memmove 调用)
     buf->start = buf->end = 0;
   }
@@ -60,12 +74,12 @@ int ahp_msgbuf_append(ahp_msgbuf_t *buf, const char *data, unsigned long len) {
 
       // 4 字节对齐
       if (new_size & 0x03) {
-          new_size = (new_size | 0x03) + 1;
+        new_size = (new_size | 0x03) + 1;
       }
 
-      char *new_buffer = (char*) realloc(buf->base, new_size);
+      char* new_buffer = (char*)realloc(buf->base, new_size);
       if (new_buffer == NULL) {
-        return -1;
+        return ENOMEM;
       }
 
       buf->base = new_buffer;
@@ -80,3 +94,6 @@ int ahp_msgbuf_append(ahp_msgbuf_t *buf, const char *data, unsigned long len) {
   return 0;
 }
 
+int ahp_msgbuf_copy(ahp_msgbuf_t* src, ahp_msgbuf_t* dst) {
+  return ahp_msgbuf_append(dst, ahp_msgbuf_data(src), ahp_msgbuf_length(src));
+}

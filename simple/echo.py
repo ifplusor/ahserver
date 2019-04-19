@@ -2,9 +2,10 @@
 
 import asyncio
 import signal
-import uvloop
-from ahserver.protocols.echo import EchoProtocol
 
+import uvloop
+
+from ahserver.protocol.echo import EchoProtocol
 
 if __name__ == "__main__":
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())

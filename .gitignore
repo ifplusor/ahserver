@@ -5,6 +5,9 @@ Thumbs.db
 # SVN
 .svn/
 
+# VS Code
+.vscode/
+
 # PyCharm
 .idea/
 *.iml

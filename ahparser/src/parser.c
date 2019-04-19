@@ -1,18 +1,20 @@
 /**
  * file:         parser.c
- * author:       James Yin<weihe.yin@istarshine.com>
+ * author:       James Yin<ywhjames@hotmail.com>
  * description:  simple http message parser
- * reference:    rfc1945, rfc2616
+ * reference:    RFC1945, RFC2616
  */
 
+#include <errno.h>
 #include <stdio.h>
 #include <string.h>
-#include <errno.h>
 
-#include "parser.h"
-#include "strbuf.h"
+#include <ahparser/parser.h>
+#include <ahparser/strbuf.h>
 
 /*
+ * Section 2.1 of [RFC 2616]
+ *
  * Augmented BNF:
  *
  *  name = definition
@@ -89,7 +91,7 @@
 /**
  * 解码 HEX
  */
-int parse_hex(strbuf_t *buf, ahp_strlen_t *str) {
+int parse_hex(strbuf_t* buf, ahp_strlen_t* str) {
   /*
    * hex  = 1*HEX
    */
@@ -106,13 +108,12 @@ int parse_hex(strbuf_t *buf, ahp_strlen_t *str) {
   }
 }
 
-
 /**
  * 从报文中提取一行 ( 包含 CRLF )
  */
-int ahp_consume_line(strbuf_t *msg, strbuf_t *line) {
-  unsigned char *cur = msg->start;
-  unsigned char *end = msg->end;
+int ahp_consume_line(strbuf_t* msg, strbuf_t* line) {
+  unsigned char* cur = msg->start;
+  unsigned char* end = msg->end;
 
   while (cur != end) {
     if (*cur == AHP_RULES_CR) {
@@ -124,7 +125,7 @@ int ahp_consume_line(strbuf_t *msg, strbuf_t *line) {
         // received CRLF
         cur++;
         if (line != NULL) {
-          strbuf_init_with_buf(line, (char*) msg->start, cur - msg->start);
+          strbuf_init_with_buf(line, (char*)msg->start, cur - msg->start);
         }
         msg->start = cur;  // 调整 buf
         return 0;
@@ -143,7 +144,7 @@ int ahp_consume_line(strbuf_t *msg, strbuf_t *line) {
 /**
  * 解码 quoted-string
  */
-int ahp_parse_quoted(strbuf_t *buf, ahp_strlen_t *str) {
+int ahp_parse_quoted(strbuf_t* buf, ahp_strlen_t* str) {
   /*
    * quoted-string  = ( <"> *(qdtext | quoted-pair ) <"> )
    * qdtext         = <any TEXT except <">>
@@ -151,7 +152,7 @@ int ahp_parse_quoted(strbuf_t *buf, ahp_strlen_t *str) {
    */
 
   int err;
-  unsigned char *start = buf->start;
+  unsigned char* start = buf->start;
 
   int ch = strbuf_pop(buf);
   if (ch == EOF) {
@@ -186,7 +187,7 @@ int ahp_parse_quoted(strbuf_t *buf, ahp_strlen_t *str) {
       err = EAGAIN;
       goto error;
     }
-    
+
     // TODO: 未处理 LWS
     else if (!AHP_RULES_TEXT[ch]) {
       err = EBADMSG;
@@ -196,7 +197,7 @@ int ahp_parse_quoted(strbuf_t *buf, ahp_strlen_t *str) {
 
   if (str != NULL) {
     // 去 \"
-    str->str = (char*) start + 1;
+    str->str = (char*)start + 1;
     str->len = buf->start - start - 2;
   }
 
@@ -219,7 +220,7 @@ finally:
 /**
  * 解码请求方法 ( 从请求行中 )
  */
-int parse_method(strbuf_t *buf, ahp_strlen_t *str) {
+int parse_method(strbuf_t* buf, ahp_strlen_t* str) {
   /*
    * Method         = "OPTIONS"                ; Section 9.2
    *                | "GET"                    ; Section 9.3
@@ -238,7 +239,7 @@ int parse_method(strbuf_t *buf, ahp_strlen_t *str) {
 /**
  * 将方法字符串转换为枚举量
  */
-ahp_method_t str2method(ahp_strlen_t *method) {
+ahp_method_t str2method(ahp_strlen_t* method) {
   // GET, POST, PUT, OPTIONS, DELETE, CONNECT, HEAD, TRACE
 
   if (*(method->str) == 'G') {
@@ -283,7 +284,7 @@ ahp_method_t str2method(ahp_strlen_t *method) {
 /**
  * 解码 URI ( 从请求行中 )
  */
-int parse_uri(strbuf_t *buf, ahp_strlen_t *str) {
+int parse_uri(strbuf_t* buf, ahp_strlen_t* str) {
   /*
    * Request-URI    = "*" | absoluteURI | abs_path | authority
    */
@@ -295,13 +296,13 @@ int parse_uri(strbuf_t *buf, ahp_strlen_t *str) {
 /**
  * 解码 HTTP 版本号 ( 从请求行中 )
  */
-int parse_version(strbuf_t *buf, ahp_version_t *version) {
+int parse_version(strbuf_t* buf, ahp_version_t* version) {
   /*
    * HTTP-Version = "HTTP" "/" 1*DIGIT "." 1*DIGIT
    */
 
   int err;
-  unsigned char *start = buf->start;
+  unsigned char* start = buf->start;
 
   err = strbuf_expect(buf, "HTTP/", 5);
   if (err) {
@@ -309,8 +310,8 @@ int parse_version(strbuf_t *buf, ahp_version_t *version) {
   }
 
   if (buf->start[1] == AHP_RULES_DOT) {
-    char major = (char) buf->start[0];
-    char minor = (char) buf->start[2];
+    char major = (char)buf->start[0];
+    char minor = (char)buf->start[2];
     if (major == '1') {
       if (minor == '0') {
         *version = AHP_VERSION_10;
@@ -348,7 +349,7 @@ success:
 /**
  * 解码请求行
  */
-int ahp_parse_request_line(ahp_parser_t *parser, strbuf_t *msg) {
+int ahp_parse_request_line(ahp_parser_t* parser, strbuf_t* msg) {
   /*
    * Request-Line = Method SP Request-URI SP HTTP-Version CRLF
    */
@@ -382,7 +383,7 @@ int ahp_parse_request_line(ahp_parser_t *parser, strbuf_t *msg) {
   // callback
   ahp_method_t e_method = str2method(&method);
   if (e_method == AHP_METHOD_CUSTOM) {
-    err = parser->on_request_line_cm(parser, &method, &uri, version);
+    err = parser->on_request_line_ext(parser, &method, &uri, version);
   } else {
     err = parser->on_request_line(parser, e_method, &uri, version);
   }
@@ -404,14 +405,30 @@ finally:
   return err;
 }
 
-int ahp_parse_message_header(ahp_parser_t *parser, strbuf_t *msg) {
+int ahp_parse_message_header(ahp_parser_t* parser, strbuf_t* msg) {
   /*
-   * message-header = field-name ":" [ field-value ]
-   * field-name     = token
-   * field-value    = *( field-content | LWS )
-   * field-content  = <the OCTETs making up the field-value
-   *                  and consisting of either *TEXT or combinations
-   *                  of token, separators, and quoted-string>
+   * In Section 4.2 of [RFC 2616], the definition of Message Headers as shown below:
+   *
+   *   message-header = field-name ":" [ field-value ]
+   *   field-name     = token
+   *   field-value    = *( field-content | LWS )
+   *   field-content  = <the OCTETs making up the field-value
+   *                    and consisting of either *TEXT or combinations
+   *                    of token, separators, and quoted-string>
+   *
+   * and obsoleted by [RFC 7230], the Section 3.2 as shown below:
+   *
+   *   header-field   = field-name ":" OWS field-value OWS
+   *
+   *   field-name     = token
+   *   field-value    = *( field-content / obs-fold )
+   *   field-content  = field-vchar [ 1*( SP / HTAB ) field-vchar ]
+   *   field-vchar    = VCHAR / obs-text
+   *
+   *   obs-fold       = CRLF 1*( SP / HTAB )
+   *                  ; obsolete line folding
+   *
+   * obs-fold is a LWS
    */
 
   int err;
@@ -423,20 +440,57 @@ int ahp_parse_message_header(ahp_parser_t *parser, strbuf_t *msg) {
   }
 
   ahp_strlen_t value;
-  strbuf_skip(msg, AHP_RULES_HTSP);  // 跳过前导空白
-  err = strbuf_consume_expectc(msg, AHP_RULES_TEXT, '\r', &value);
-  if (err || strbuf_expectc(msg, '\n')) {
-    goto error;
+
+  // trim preceded space
+  strbuf_skip(msg, AHP_RULES_HTSP);
+  unsigned char* start = strbuf_cur(msg);
+
+  for (;;) {
+    err = strbuf_consume_expectc(msg, AHP_RULES_TEXT, '\r', &value);
+    if (err || strbuf_expectc(msg, '\n')) {
+      goto error;
+    }
+
+    // obs-fold
+    if (strbuf_expects(msg, AHP_RULES_HTSP)) {
+      break;
+    }
+    strbuf_skip(msg, AHP_RULES_HTSP);
   }
+
+  // trim followed space
+  unsigned char* end = strbuf_cur(msg) - 2;
+  while (end > start) {
+    if (!AHP_RULES_LWS[*(end - 1)]) {
+      break;
+    }
+  }
+
+  value.str = start;
+  value.len = end - start;
+
+  // replace obs-fold by SP
+  for (; start < end; start++) {
+    if (*start == '\r') {
+      break;
+    }
+  }
+  for (unsigned char* it = start; it < end;) {
+    if (*it == '\r') {
+      *start++ = ' ';
+      // clang-format off
+      while (AHP_RULES_LWS[*++it]);
+      // clang-format on 
+    } else {
+      *start++ = *it++;
+    }
+  }
+  value.len = (char*)start - value.str;
 
   err = parser->on_message_header(parser, &name, &value);
   if (err) {
     goto error;
   }
-
-//  if (strbuf_expectc(msg, EOF)) {
-//    goto error;
-//  }
 
   return 0;
 
@@ -444,11 +498,10 @@ error:
   return EBADMSG;
 }
 
-
 /**
  * 解码请求报文头 ( Request-Line + Headers )
  */
-int ahp_parse_request(ahp_parser_t *parser, ahp_msgbuf_t *msg) {
+int ahp_parse_request(ahp_parser_t* parser, ahp_msgbuf_t* msg) {
   /*
    * Request = Request-Line
    *           *(( General-Header
@@ -465,29 +518,40 @@ int ahp_parse_request(ahp_parser_t *parser, ahp_msgbuf_t *msg) {
 
   do {
     switch (parser->state) {
-      case AHP_STATE_PARSE_IDLE:
+      case AHP_PARSER_STATE_IDLE:
         // 初始化
-        parser->state = AHP_STATE_PARSE_REQUEST_LINE;
+        parser->state = AHP_PARSER_STATE_PARSE_REQUEST_LINE;
 
-      case AHP_STATE_PARSE_REQUEST_LINE:
+      case AHP_PARSER_STATE_PARSE_REQUEST_LINE:
         // 从缓冲区中读取一行
         err = ahp_consume_line(&message, &line);
-        if (err) goto error;
+        if (err)
+          goto error;
 
         // 解析请求行
         err = ahp_parse_request_line(parser, &line);
-        if (err) goto error;
+        if (err)
+          goto error;
 
-        parser->state = AHP_STATE_PARSE_MESSAGE_HEADER;
+        parser->state = AHP_PARSER_STATE_PARSE_MESSAGE_HEADER;
 
-      case AHP_STATE_PARSE_MESSAGE_HEADER:
+      case AHP_PARSER_STATE_PARSE_MESSAGE_HEADER:
+      case AHP_PARSER_STATE_PARSE_MESSAGE_HEADER_CRLF:
         // 从缓冲区中读取一行
         err = ahp_consume_line(&message, &line);
-        if (err) goto error;
+        if (err) {
+          goto error;
+        }
 
         if (line.size <= 2) {
           // 空行 ( 连续两个 crlf ), request header 结束
           goto success;
+        }
+
+        // request header 应该结束
+        if (parser->state == AHP_PARSER_STATE_PARSE_MESSAGE_HEADER_CRLF) {
+          err = EBADMSG;
+          goto error;
         }
 
         // 因为 LWS 的关系，crlf 不能做为 header 的分界符，因此要多看一个 OCTET
@@ -506,9 +570,9 @@ int ahp_parse_request(ahp_parser_t *parser, ahp_msgbuf_t *msg) {
         }
 
         // LWS: CRLF ' ' or CRLF '\t'
-        parser->state = AHP_STATE_PARSE_MESSAGE_HEADER_LWS;
+        parser->state = AHP_PARSER_STATE_PARSE_MESSAGE_HEADER_LWS;
 
-      case AHP_STATE_PARSE_MESSAGE_HEADER_LWS:
+      case AHP_PARSER_STATE_PARSE_MESSAGE_HEADER_LWS:
         // TODO: parse LWS
         err = EBADMSG;
         goto error;
@@ -523,7 +587,7 @@ error:
   goto finally;
 
 success:
-  parser->state = AHP_STATE_PARSE_IDLE;
+  parser->state = AHP_PARSER_STATE_IDLE;
   err = 0;
   goto finally;
 
@@ -532,7 +596,7 @@ finally:
   return err;
 }
 
-int ahp_parse_chunked_size(ahp_parser_t *parser, strbuf_t *msg) {
+int ahp_parse_chunked_size(ahp_parser_t* parser, strbuf_t* msg) {
   /*
    * chunk-size     = 1*HEX
    */
@@ -544,8 +608,8 @@ int ahp_parse_chunked_size(ahp_parser_t *parser, strbuf_t *msg) {
   }
 
   // 解析 chunk 长度
-  ahp_strlen_t chunk_size_s;
-  err = parse_hex(msg, &chunk_size_s);
+  ahp_strlen_t chunk_size;
+  err = parse_hex(msg, &chunk_size);
   if (err) {
     return EBADMSG;
   }
@@ -557,12 +621,12 @@ int ahp_parse_chunked_size(ahp_parser_t *parser, strbuf_t *msg) {
   } else if (ch != '\r' && ch != ';') {
     return EBADMSG;
   } else {
-    parser->chunk_size = htoi(&chunk_size_s);
+    parser->chunk_size = htoi(&chunk_size);
     return 0;
   }
 }
 
-int ahp_parse_chunked_ext(ahp_parser_t *parser, strbuf_t *msg) {
+int ahp_parse_chunked_ext(ahp_parser_t* parser, strbuf_t* msg) {
   /*
    * chunk-extension= *( ";" chunk-ext-name [ "=" chunk-ext-val ] )
    * chunk-ext-name = token
@@ -570,7 +634,7 @@ int ahp_parse_chunked_ext(ahp_parser_t *parser, strbuf_t *msg) {
    */
 
   int err;
-  unsigned char *start = msg->start;
+  unsigned char* start = msg->start;
 
   // 解析 chunk extension
   while (strbuf_expectc(msg, ';') == 0) {
@@ -602,14 +666,10 @@ int ahp_parse_chunked_ext(ahp_parser_t *parser, strbuf_t *msg) {
   return 0;
 }
 
-int ahp_parse_chunked_data(ahp_parser_t *parser, strbuf_t *msg) {
-
+int ahp_parse_chunked_data(ahp_parser_t* parser, strbuf_t* msg) {
   int err;
 
-  ahp_strlen_t chunked_data = {
-    .str = (char*) msg->start,
-    .len = parser->chunk_size
-  };
+  ahp_strlen_t chunked_data = {.str = (char*)msg->start, .len = parser->chunk_size};
   // TODO:
 
   strbuf_fast_forward(msg, parser->chunk_size);
@@ -640,7 +700,7 @@ int ahp_parse_chunked_data(ahp_parser_t *parser, strbuf_t *msg) {
 /**
  * 解码报文体
  */
-int ahp_parse_body(ahp_parser_t *parser, ahp_msgbuf_t *msg) {
+int ahp_parse_body(ahp_parser_t* parser, ahp_msgbuf_t* msg) {
   int err;
 
   strbuf_t message, line;
@@ -649,11 +709,11 @@ int ahp_parse_body(ahp_parser_t *parser, ahp_msgbuf_t *msg) {
   ahp_strlen_t body;
   do {
     switch (parser->state) {
-      /*
-       * Content-Length
-       */
+        /*
+         * Content-Length
+         */
 
-      case AHP_STATE_PARSE_LENGTH_BODY:
+      case AHP_PARSER_STATE_PARSE_BODY: {
         // 按长度定位 body
         err = strbuf_consume_len(&message, parser->content_length, &body);
         if (err) {
@@ -666,36 +726,44 @@ int ahp_parse_body(ahp_parser_t *parser, ahp_msgbuf_t *msg) {
           goto error;
         }
         goto success;
-        break;
+      } break;
 
-      /*
-       * Chunked-Body   = *chunk
-       *                  last-chunk
-       *                  trailer
-       *                  CRLF
-       *
-       * chunk          = chunk-size [ chunk-extension ] CRLF
-       *                  chunk-data CRLF
-       * last-chunk     = 1*("0") [ chunk-extension ] CRLF
-       *
-       * chunk-data     = chunk-size(OCTET)
-       * trailer        = *(entity-header CRLF)
-       *
-       */
+        /*
+         * Chunked-Body   = *chunk
+         *                  last-chunk
+         *                  trailer
+         *                  CRLF
+         *
+         * chunk          = chunk-size [ chunk-extension ] CRLF
+         *                  chunk-data CRLF
+         * last-chunk     = 1*("0") [ chunk-extension ] CRLF
+         *
+         * chunk-data     = chunk-size(OCTET)
+         * trailer        = *(entity-header CRLF)
+         *
+         */
 
-      case AHP_STATE_PARSE_CHUNKED_SIZE:
+      case AHP_PARSER_STATE_PARSE_CHUNKED_SIZE: {
         err = ahp_parse_chunked_size(parser, &message);
-        if (err) goto error;
-        parser->state = AHP_STATE_PARSE_CHUNKED_EXT;
+        if (err) {
+          goto error;
+        }
+        parser->state = AHP_PARSER_STATE_PARSE_CHUNKED_EXT;
+      }
 
-      case AHP_STATE_PARSE_CHUNKED_EXT:
+      case AHP_PARSER_STATE_PARSE_CHUNKED_EXT: {
         err = ahp_parse_chunked_ext(parser, &message);
-        if (err) goto error;
-        parser->state = AHP_STATE_PARSE_CHUNKED_DATA;
+        if (err) {
+          goto error;
+        }
+        parser->state = AHP_PARSER_STATE_PARSE_CHUNKED_DATA;
+      }
 
-      case AHP_STATE_PARSE_CHUNKED_DATA:
+      case AHP_PARSER_STATE_PARSE_CHUNKED_DATA:
+        // TODO
 
-      case AHP_STATE_PARSE_CHUNKED_TRAILER:
+      case AHP_PARSER_STATE_PARSE_CHUNKED_TRAILER:
+        // TODO
 
       default:
         // unexpected state, parser 不可用
@@ -707,7 +775,7 @@ error:
   goto finally;
 
 success:
-  parser->state = AHP_STATE_PARSE_IDLE;
+  parser->state = AHP_PARSER_STATE_IDLE;
   err = 0;
   goto finally;
 
@@ -716,28 +784,27 @@ finally:
   return err;
 }
 
-int ahp_parse_body_length(ahp_parser_t *parser, ahp_msgbuf_t *msg, long length) {
-  if (parser->state != AHP_STATE_PARSE_IDLE) {
+int ahp_parse_body_length(ahp_parser_t* parser, ahp_msgbuf_t* msg, long length) {
+  if (parser->state != AHP_PARSER_STATE_IDLE) {
     // unexpected state, parser 不可用
     return EBUSY;
   }
 
   // 初始化
   parser->content_length = length;
-  parser->state = AHP_STATE_PARSE_LENGTH_BODY;
+  parser->state = AHP_PARSER_STATE_PARSE_BODY;
 
   return ahp_parse_body(parser, msg);
 }
 
-
-int ahp_parse_body_chunked(ahp_parser_t *parser, ahp_msgbuf_t *msg) {
-  if (parser->state != AHP_STATE_PARSE_IDLE) {
+int ahp_parse_body_chunked(ahp_parser_t* parser, ahp_msgbuf_t* msg) {
+  if (parser->state != AHP_PARSER_STATE_IDLE) {
     // unexpected state, parser 不可用
     return EBUSY;
   }
 
   // 初始化
-  parser->state = AHP_STATE_PARSE_CHUNKED_SIZE;
+  parser->state = AHP_PARSER_STATE_PARSE_CHUNKED_SIZE;
 
   return ahp_parse_body(parser, msg);
 }
