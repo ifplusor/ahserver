@@ -52,6 +52,6 @@ setup(
     ext_modules=cythonize(h2parser),
     install_requires=["six"],
     extras_require={"uvloop": ["uvloop"]},
-    entry_points={},
+    entry_points={"console_scripts": ["ahsgi=ahserver.wsgi.main:main"]},
     **kwds
 )
