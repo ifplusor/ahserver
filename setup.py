@@ -51,7 +51,7 @@ setup(
     packages=find_packages(exclude=["test.py"]),
     ext_modules=cythonize(h2parser),
     install_requires=["six"],
-    extras_require={"uvloop": ["uvloop"]},
-    entry_points={"console_scripts": ["ahsgi=ahserver.wsgi.main:main"]},
+    extras_require={"uvloop": ["uvloop"], "asgi": ["argiref"]},
+    entry_points={"console_scripts": ["ahasgi=ahserver.asgi.main:main", "ahwsgi=ahserver.wsgi.main:main"]},
     **kwds
 )
