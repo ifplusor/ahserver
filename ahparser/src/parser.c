@@ -115,7 +115,7 @@ int ahp_consume_line(strbuf_t* msg, strbuf_t* line) {
   unsigned char* cur = msg->start;
   unsigned char* end = msg->end;
 
-  while (cur != end) {
+  while (cur < end) {
     if (*cur == AHP_RULES_CR) {
       cur++;
       if (cur == end) {
@@ -445,6 +445,7 @@ int ahp_parse_message_header(ahp_parser_t* parser, strbuf_t* msg) {
   strbuf_skip(msg, AHP_RULES_HTSP);
   unsigned char* start = strbuf_cur(msg);
 
+  int has_fold = 0;
   for (;;) {
     err = strbuf_consume_expectc(msg, AHP_RULES_TEXT, '\r', &value);
     if (err || strbuf_expectc(msg, '\n')) {
@@ -455,6 +456,7 @@ int ahp_parse_message_header(ahp_parser_t* parser, strbuf_t* msg) {
     if (strbuf_expects(msg, AHP_RULES_HTSP)) {
       break;
     }
+    has_fold = 1;
     strbuf_skip(msg, AHP_RULES_HTSP);
   }
 
@@ -470,22 +472,24 @@ int ahp_parse_message_header(ahp_parser_t* parser, strbuf_t* msg) {
   value.len = end - start;
 
   // replace obs-fold by SP
-  for (; start < end; start++) {
-    if (*start == '\r') {
-      break;
+  if (has_fold != 0) {
+    for (; start < end; start++) {
+      if (*start == '\r') {
+        break;
+      }
     }
-  }
-  for (unsigned char* it = start; it < end;) {
-    if (*it == '\r') {
-      *start++ = ' ';
-      // clang-format off
-      while (AHP_RULES_LWS[*++it]);
-      // clang-format on 
-    } else {
-      *start++ = *it++;
+    for (unsigned char* it = start; it < end;) {
+      if (*it == '\r') {
+        *start++ = ' ';
+        // clang-format off
+        while (AHP_RULES_LWS[*++it]);
+        // clang-format on
+      } else {
+        *start++ = *it++;
+      }
     }
+    value.len = (char*)start - value.str;
   }
-  value.len = (char*)start - value.str;
 
   err = parser->on_message_header(parser, &name, &value);
   if (err) {
@@ -525,57 +529,62 @@ int ahp_parse_request(ahp_parser_t* parser, ahp_msgbuf_t* msg) {
       case AHP_PARSER_STATE_PARSE_REQUEST_LINE:
         // 从缓冲区中读取一行
         err = ahp_consume_line(&message, &line);
-        if (err)
-          goto error;
-
-        // 解析请求行
-        err = ahp_parse_request_line(parser, &line);
-        if (err)
-          goto error;
-
-        parser->state = AHP_PARSER_STATE_PARSE_MESSAGE_HEADER;
-
-      case AHP_PARSER_STATE_PARSE_MESSAGE_HEADER:
-      case AHP_PARSER_STATE_PARSE_MESSAGE_HEADER_CRLF:
-        // 从缓冲区中读取一行
-        err = ahp_consume_line(&message, &line);
         if (err) {
           goto error;
         }
 
-        if (line.size <= 2) {
-          // 空行 ( 连续两个 crlf ), request header 结束
-          goto success;
-        }
-
-        // request header 应该结束
-        if (parser->state == AHP_PARSER_STATE_PARSE_MESSAGE_HEADER_CRLF) {
-          err = EBADMSG;
+        // 解析请求行
+        err = ahp_parse_request_line(parser, &line);
+        if (err) {
           goto error;
         }
 
-        // 因为 LWS 的关系，crlf 不能做为 header 的分界符，因此要多看一个 OCTET
-        ch = strbuf_peek(&message);
-        if (ch == EOF) {
-          err = EAGAIN;
-          goto error;
-        }
-        if (ch != AHP_RULES_SP && ch != AHP_RULES_HT) {
-          // 解析消息头
-          err = ahp_parse_message_header(parser, &line);
+        parser->state = AHP_PARSER_STATE_PARSE_MESSAGE_HEADER;
+
+      case AHP_PARSER_STATE_PARSE_MESSAGE_HEADER:
+      case AHP_PARSER_STATE_PARSE_MESSAGE_HEADER_CRLF: {
+        unsigned char* start = strbuf_cur(&message);
+        for (;;) {
+          // 从缓冲区中读取一行
+          err = ahp_consume_line(&message, &line);
           if (err) {
+            if (err == EAGAIN) {
+              strbuf_rewind(&message, start);
+            }
             goto error;
           }
-          break;
+
+          if (line.size <= 2) {
+            // 空行 ( 连续两个 crlf ), request header 结束
+            goto success;
+          }
+
+          // request header 应该结束
+          if (parser->state == AHP_PARSER_STATE_PARSE_MESSAGE_HEADER_CRLF) {
+            err = EBADMSG;
+            goto error;
+          }
+
+          // 因为 LWS 的关系，crlf 不能做为 header 的分界符，因此要多看一个 OCTET
+          ch = strbuf_peek(&message);
+          if (ch == EOF) {
+            err = EAGAIN;
+            strbuf_rewind(&message, start);
+            goto error;
+          } else if (ch != AHP_RULES_SP && ch != AHP_RULES_HT) {
+            strbuf_init_with_buf(&line, (char*)start, strbuf_cur(&message) - start);
+
+            // 解析消息头
+            err = ahp_parse_message_header(parser, &line);
+            if (err) {
+              goto error;
+            }
+
+            // new header
+            start = strbuf_cur(&message);
+          }
         }
-
-        // LWS: CRLF ' ' or CRLF '\t'
-        parser->state = AHP_PARSER_STATE_PARSE_MESSAGE_HEADER_LWS;
-
-      case AHP_PARSER_STATE_PARSE_MESSAGE_HEADER_LWS:
-        // TODO: parse LWS
-        err = EBADMSG;
-        goto error;
+      }
 
       default:
         // unexpected state, parser 不可用

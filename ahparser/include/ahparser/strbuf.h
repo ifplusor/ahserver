@@ -37,6 +37,12 @@ static inline unsigned char* strbuf_cur(strbuf_t* buf) {
   return buf->start;
 }
 
+static inline void strbuf_rewind(strbuf_t* buf, unsigned char* pos) {
+  if (pos >= buf->base && pos <= buf->end) {
+    buf->start = pos;
+  }
+}
+
 static inline long strbuf_consume_length(strbuf_t* buf) {
   return buf->start - buf->base;
 }
