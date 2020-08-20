@@ -14,7 +14,7 @@ except Exception:
     TYPE_CHECKING = False
 
 if TYPE_CHECKING:
-    from ..http2 import HttpRequest
+    from .request import ASGIHttpRequest
 
 
 class ASGIDispatcher(AsyncDispatcher):
@@ -25,7 +25,7 @@ class ASGIDispatcher(AsyncDispatcher):
         self.server_port = server_port
         self.on_https = on_https
 
-    def get_scope(self, request):  # type: (HttpRequest) -> Dict[str]
+    def get_scope(self, request):  # type: (ASGIHttpRequest) -> Dict[str]
         path_and_query = request.uri.split(b"?", 1)
         path = path_and_query[0]
         if len(path_and_query) > 1:
@@ -50,16 +50,15 @@ class ASGIDispatcher(AsyncDispatcher):
 
         return scope
 
-    async def dispatch(self, request):  # type: (HttpRequest) -> ASGIHttpResponse
+    async def dispatch(self, request):  # type: (ASGIHttpRequest) -> ASGIHttpResponse
         response = ASGIHttpResponse(request, self.loop)
         scope = self.get_scope(request)
 
         async def receive():
             nonlocal request
-            body = request.body
-            if body is None:
-                body = b""
-            event = {"type": "http.request", "body": body, "more_body": False}
+            body = await request.body.read()
+            more_body = not request.body.read_eof()
+            event = {"type": "http.request", "body": body, "more_body": more_body}
             return event
 
         await guarantee_single_callable(self.application)(scope, receive, response.send)

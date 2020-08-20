@@ -14,13 +14,18 @@ if __name__ == "__main__":
 else:
 
     def create_application():
-        from flask import Flask, Response
+        from flask import Flask, Response, request
 
         app = Flask(__name__)
 
         @app.route("/hello")
         def hello_world():
-            return Response("Hello world from Flask!\n", mimetype="text/plain")
+            return Response("Hello, welcome to Flask world!\n", mimetype="text/plain")
+
+        @app.route("/post", methods=["POST"])
+        def get_user_posts():
+            data = request.get_data()
+            return data
 
         return app.wsgi_app
 

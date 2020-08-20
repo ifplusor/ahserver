@@ -13,7 +13,6 @@ from .ahparser cimport *
 from .constant import LATIN1_ENCODING
 from .frame import HttpFrame, HttpDataFrame, HttpHeadersFrame, HttpSettingsFrame
 from .protocol import HttpMethod, HttpVersion, HttpHeader
-from .request import HttpRequest
 
 logger = logging.getLogger()
 
@@ -83,6 +82,7 @@ cdef class H2Parser:
 
         object _request
 
+        object _create_request  # 请求工厂
         object _on_message  # 完整 http 报文解析完成回调
         object _on_pri_message
 
@@ -117,7 +117,8 @@ cdef class H2Parser:
         self._parser.on_message_header = __message_header_callback
         self._parser.on_message_body = __message_body_callback
 
-    def __init__(self, on_message, on_pri_message=None):
+    def __init__(self, create_request, on_message, on_pri_message=None):
+        self._create_request = create_request  # 注入请求工厂
         self._on_message = on_message  # 注入请求处理回调
         self._on_pri_message = on_pri_message
         self._request = None
@@ -153,18 +154,18 @@ cdef class H2Parser:
         return data
 
     cdef parser_ctrl _proc_idle(self, bytes data, int size):
-        # 准备解析新请求
+        """准备解析新请求"""
 
         ahp_msgbuf_reset(&self._buffer)
         ahp_parse_reset(&self._parser)
-        self._request = HttpRequest()
+        self._request = self._create_request()
 
         self._change_state(STATE_WAIT_HEADER)
 
         return CTRL_CONTINUE
 
     cdef parser_ctrl _proc_wait_header(self, bytes data, int size):
-        # 读取 request headers
+        """读取 request headers"""
 
         # buffer data
         self._errno = ahp_msgbuf_append(&self._buffer, data, size)
@@ -217,6 +218,9 @@ cdef class H2Parser:
             else:
                 self._change_state(STATE_HAVE_MESSAGE)
 
+        if self._state != STATE_ERROR:
+            self._on_message(self._request)
+
         return CTRL_CONTINUE
 
     cdef parser_ctrl _proc_touch_body(self, bytes data, int size):
@@ -265,7 +269,8 @@ cdef class H2Parser:
         # 获取到完整的 request
 
         self._change_state(STATE_BUSY)
-        self._on_message(self._request)
+        self._request.body.eof_received()
+        # self._on_message(self._request)
 
         return CTRL_PAUSE
 
@@ -362,8 +367,11 @@ cdef class H2Parser:
         return 0
 
     cdef int _on_message_body(self, ahp_strlen_t *body):
-        self._request.body = body.str[:body.len]
-        return 0
+        try:
+            self._request.body.write(body.str[:body.len])
+            return 0
+        except Exception:
+            return 1
 
 cdef int __request_line_callback(ahp_parser_t *parser, ahp_method_t method, ahp_strlen_t *uri, ahp_version_t version):
     cdef H2Parser h2parser = <H2Parser> parser.data

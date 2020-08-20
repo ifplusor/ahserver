@@ -2,9 +2,8 @@
 
 __all__ = ["HttpStream"]
 
-import six
-
 from abc import ABCMeta, abstractmethod
+from six import add_metaclass
 
 try:
     from typing import TYPE_CHECKING
@@ -15,7 +14,7 @@ if TYPE_CHECKING:
     from ahserver.protocol.http2 import Http2Protocol
 
 
-@six.add_metaclass(ABCMeta)
+@add_metaclass(ABCMeta)
 class HttpStream:
     def __init__(self, protocol):  # type: (Http2Protocol) -> None
         self.protocol = protocol

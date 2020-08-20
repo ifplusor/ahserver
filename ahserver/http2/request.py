@@ -2,13 +2,12 @@
 
 __all__ = ["Request", "HttpRequest"]
 
-from typing import Optional, Union
-
 from .protocol import HttpHeader, HttpMethod, HttpVersion
 from ..util.dict import CaseInsensitiveDict
+from ..util.stream import StreamIO
 
 try:
-    from typing import TYPE_CHECKING
+    from typing import TYPE_CHECKING, Optional, Union
 except Exception:
     TYPE_CHECKING = False
 
@@ -30,16 +29,16 @@ class Request:
 
 
 class HttpRequest(Request):
-    def __init__(self, method=HttpMethod.GET, version=HttpVersion.V11):
+    def __init__(self, method=HttpMethod.GET, uri=b"/", version=HttpVersion.V11):
         super(HttpRequest, self).__init__()
 
         # 使用 bytes 存储，保留数据的原始格式
 
         self.method = method
-        self.uri = b"/"
+        self.uri = uri
         self.version = version
         self.headers = CaseInsensitiveDict()
-        self.body = None
+        self.body: StreamIO
 
     @property
     def method(self) -> HttpMethod:

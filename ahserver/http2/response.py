@@ -2,9 +2,8 @@
 
 __all__ = ["Response", "HttpResponse"]
 
-import six
-
 from abc import ABCMeta, abstractmethod
+from six import add_metaclass
 
 from .constant import LATIN1_ENCODING
 from .protocol import HttpStatus, HttpHeader
@@ -20,7 +19,7 @@ if TYPE_CHECKING:
     from .stream import HttpStream
 
 
-@six.add_metaclass(ABCMeta)
+@add_metaclass(ABCMeta)
 class Response:
     def __init__(self, stream=None):  # type: (Optional[HttpStream]) -> None
         self._stream = stream

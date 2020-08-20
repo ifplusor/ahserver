@@ -45,8 +45,8 @@ class Http2Protocol(Protocol):
     Note: 每个 socket 连接 (TCPTransport 对象) 都会创建一个 protocol 实例
     """
 
-    def __init__(self, loop=None, is_https=False, is_h2=False):
-        # type: (Optional[AbstractEventLoop], bool, bool) -> None
+    def __init__(self, request_factory, loop=None, is_https=False, is_h2=False):
+        # type: (Callable[..., HttpRequest], Optional[AbstractEventLoop], bool, bool) -> None
         if loop is None:
             loop = asyncio.get_event_loop()
 
@@ -58,7 +58,7 @@ class Http2Protocol(Protocol):
         self.is_h2 = is_h2
         self.run_on_h2 = False
 
-        self.default_stream = Http1xStream(self)
+        self.default_stream = Http1xStream(self, request_factory)
 
         self.frame_splitter: H2Splitter
         self.stream_table: Dict[int, Http2Stream]

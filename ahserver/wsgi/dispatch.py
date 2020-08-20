@@ -6,7 +6,6 @@ import os
 import sys
 
 from concurrent.futures import ThreadPoolExecutor
-from io import StringIO
 
 from .response import WSGIHttpResponse
 from ..http2.constant import LATIN1_ENCODING
@@ -19,7 +18,7 @@ except Exception:
     TYPE_CHECKING = False
 
 if TYPE_CHECKING:
-    from ..http2 import HttpRequest
+    from .request import WSGIHttpRequest
 
 
 enc, esc = sys.getfilesystemencoding(), "surrogateescape"
@@ -39,7 +38,7 @@ class WSGIDispatcher(AsyncDispatcher):
         self.on_https = on_https
         self.executor = ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="app")
 
-    def get_environ(self, request):  # type: (HttpRequest) -> Dict[str]
+    def get_environ(self, request):  # type: (WSGIHttpRequest) -> Dict[str]
         environ = {k: unicode_to_wsgi(v) for k, v in os.environ.items()}  # type: Dict[str, Any]
 
         #
@@ -69,7 +68,7 @@ class WSGIDispatcher(AsyncDispatcher):
 
         environ["wsgi.version"] = (1, 0)
         environ["wsgi.url_scheme"] = "https" if self.on_https else "http"
-        environ["wsgi.input"] = StringIO(request.body)
+        environ["wsgi.input"] = request.body
         environ["wsgi.errors"] = sys.stderr
         environ["wsgi.multithread"] = True
         environ["wsgi.multiprocess"] = True
@@ -77,7 +76,7 @@ class WSGIDispatcher(AsyncDispatcher):
 
         return environ
 
-    async def dispatch(self, request):  # type: (HttpRequest) -> WSGIHttpResponse
+    async def dispatch(self, request):  # type: (WSGIHttpRequest) -> WSGIHttpResponse
         # TODO: HTTP 1.1 Expect/Continue
         response = WSGIHttpResponse(request, self.loop, self.executor)
         environ = self.get_environ(request)

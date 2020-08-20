@@ -15,7 +15,7 @@ else:
 
     def create_application():
         from typing import Optional
-        from fastapi import FastAPI
+        from fastapi import FastAPI, Body
 
         app = FastAPI()
 
@@ -26,6 +26,10 @@ else:
         @app.get("/items/{item_id}")
         def read_item(item_id: int, q: Optional[str] = None):
             return {"item_id": item_id, "q": q}
+
+        @app.post("/post")
+        def read_body(body=Body(...)):
+            return body
 
         return app
 

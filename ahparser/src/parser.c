@@ -724,18 +724,23 @@ int ahp_parse_body(ahp_parser_t* parser, ahp_msgbuf_t* msg) {
 
       case AHP_PARSER_STATE_PARSE_BODY: {
         // 按长度定位 body
-        err = strbuf_consume_len(&message, parser->content_length, &body);
-        if (err) {
-          err = EAGAIN;
-          goto error;
+        long size = strbuf_remain_length(&message);
+        if (size > parser->content_length) {
+          size = parser->content_length;
         }
+        strbuf_consume_len(&message, size, &body);
         err = parser->on_message_body(parser, &body);
         if (err) {
           err = EBADMSG;
           goto error;
         }
+        parser->content_length -= size;
+        if (parser->content_length > 0) {
+          err = EAGAIN;
+          goto error;
+        }
         goto success;
-      } break;
+      }
 
         /*
          * Chunked-Body   = *chunk

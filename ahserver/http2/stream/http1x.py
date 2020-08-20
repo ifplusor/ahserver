@@ -10,33 +10,28 @@ from asyncio import Task, CancelledError
 from . import HttpStream
 from ..h2parser import H2Parser
 from ..protocol import HttpVersion, HttpStatus, HttpHeader, PopularHeaders
-from ..request import HttpRequest
 from ..response import HttpResponse
 
 try:
-    from typing import TYPE_CHECKING
+    from typing import TYPE_CHECKING, Callable
 except Exception:
     TYPE_CHECKING = False
 
 if TYPE_CHECKING:
     from ahserver.protocol.http2 import Http2Protocol
+    from ..request import HttpRequest
 
 
 logger = logging.getLogger()
 
-# settings from env
-print_request = os.getenv("ahserver_request_print", "false").lower() == "true"
-print_response = os.getenv("ahserver_response_print", "false").lower() == "true"
-enable_upgrade2 = os.getenv("ahserver_enable_upgrade2", "false").lower() == "true"
-
 
 class Http1xStream(HttpStream):
-    def __init__(self, protocol, enable_upgrade2=False):
-        # type: (Http2Protocol, bool) -> None
+    def __init__(self, protocol, request_factory, enable_upgrade2=False):
+        # type: (Http2Protocol, Callable[..., HttpRequest], bool) -> None
         super(Http1xStream, self).__init__(protocol)
 
         self.enable_upgrade2 = enable_upgrade2
-        self.parser = H2Parser(self.on_message, self.protocol.on_http2_preface)
+        self.parser = H2Parser(request_factory, self.on_message, self.protocol.on_http2_preface)
 
     def data_received(self, data: bytes):
         # 递送给 parser 解协议
@@ -47,14 +42,9 @@ class Http1xStream(HttpStream):
         if self.parser.feed_eof():
             self.protocol.close()
 
-    def on_message(self, request: HttpRequest):
+    def on_message(self, request):  # type: (HttpRequest) -> None
         # 收到 http 请求
         request.stream = self
-
-        if print_request:
-            logger.info("request detail:\n\n----------\n%s", request)
-            if request.body is not None:
-                logger.info("Body: [%d]\n%s\n", len(request.body), request.body)
 
         if request.version != HttpVersion.V10 and request.version != HttpVersion.V11:
             response = HttpResponse(request, HttpStatus.HTTP_VERSION_NOT_UNSUPPORTED, PopularHeaders.CONNECTION_CLOSE)
@@ -62,11 +52,7 @@ class Http1xStream(HttpStream):
             return
 
         # http 1.1 升级 http 2.0
-        if (
-            HttpHeader.UPGRADE in request
-            and request[HttpHeader.UPGRADE] == b"h2c"
-            and request.version == HttpVersion.V11
-        ):
+        if request.get(HttpHeader.UPGRADE) == b"h2c" and request.version == HttpVersion.V11:
             if self.enable_upgrade2:
                 if self.protocol.http_upgrade2(request):
                     response = HttpResponse(
@@ -82,8 +68,6 @@ class Http1xStream(HttpStream):
         self.protocol.dispatch_request(request, callback=self._respond)
 
     def send_data(self, data):
-        if print_response:
-            logger.info(data)
         self.protocol.send_data(data)
 
     async def send_response(self, response: HttpResponse):
@@ -106,4 +90,5 @@ class Http1xStream(HttpStream):
         except Exception:
             logger.exception("encounter unexpected exception.")
         finally:
+            # TODO: http1.1 pipeline
             self.parser.free()

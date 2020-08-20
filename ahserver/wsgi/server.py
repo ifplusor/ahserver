@@ -123,6 +123,7 @@ def serve(app, host, port, sock, ssl_context=None, loop=None, max_workers=None):
     import asyncio
     from asyncio.sslproto import SSLProtocol
     from .dispatch import WSGIDispatcher
+    from .request import WSGIHttpRequest
     from ..http2.dispatch import add_dispatcher
     from ..protocol.http2 import Http2Protocol
 
@@ -138,13 +139,13 @@ def serve(app, host, port, sock, ssl_context=None, loop=None, max_workers=None):
 
         def http_protocol_factory():
             nonlocal loop
-            return Http2Protocol(loop=loop, is_https=False)
+            return Http2Protocol(WSGIHttpRequest, loop=loop, is_https=False)
 
     else:
 
         def http_protocol_factory():
             nonlocal loop, ssl_context
-            protocol = Http2Protocol(loop=loop, is_https=True)
+            protocol = Http2Protocol(WSGIHttpRequest, loop=loop, is_https=True)
             return SSLProtocol(loop=loop, app_protocol=protocol, sslcontext=ssl_context, waiter=None, server_side=True)
 
     # 创建 TCP Server
