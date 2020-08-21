@@ -246,7 +246,10 @@ cdef class H2Parser:
         # 读取 request body
 
         # buffer data
-        ahp_msgbuf_append(&self._buffer, data, size)
+        self._errno = ahp_msgbuf_append(&self._buffer, data, size)
+        if self._errno != 0:
+            self._change_state(STATE_ERROR)
+            return CTRL_CONTINUE
 
         self._errno = ahp_parse_body(&self._parser, &self._buffer)
         if self._errno == 0:
@@ -287,7 +290,11 @@ cdef class H2Parser:
         return CTRL_CONTINUE
 
     cdef parser_ctrl _proc_wait_pri_body(self, bytes data, int size):
-        ahp_msgbuf_append(&self._buffer, data, size)
+        # buffer data
+        self._errno = ahp_msgbuf_append(&self._buffer, data, size)
+        if self._errno != 0:
+            self._change_state(STATE_ERROR)
+            return CTRL_CONTINUE
 
         self._errno = ahp_parse_body(&self._parser, &self._buffer)
         if self._errno == 0:

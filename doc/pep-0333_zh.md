@@ -396,9 +396,9 @@ HTTP请求中`Content-Length`字段包含的所有内容，它可以为空或不
 
 传递给应用程序的第二个参数是形如`start_response(status, reponse_headers, exc_info=None)`的可调用对象。（同所有的WSGI可调用对象类似，它的参数必须是位置参数，而非关键字参数）。`start_response`被用来启动一个HTTP响应，它必须返回一个形如`write(body_data)`的可调用对象（具体参考下文的[缓冲和流](#缓冲和流-buffering-and-streaming)章节）
 
-`status`参数是HTTP的`"状态字符串(status)"`，例如：`"200 OK"`, `"404 Not Found"`。它包含一个状态码和一个原因短语，状态码在前，原因短语在后，中间用空格分隔，两端不包含任何其他的字符或空格（详情请参见[RFC 2616](http://tools.ietf.org/html/rfc2616.html)的6.1.1节）。`status`字符串**不能**包含控制字符，末尾也不能有回车换行等其他的组合符号。
+`status`参数是HTTP的`"状态字符串(status)"`，例如：`"200 OK"`, `"404 Not Found"`。它包含一个状态码和一个原因短语，状态码在前，原因短语在后，中间用空格分隔，两端不包含任何其他的字符或空格（详情请参见[RFC2616](http://tools.ietf.org/html/rfc2616.html)的6.1.1节）。`status`字符串**不能**包含控制字符，末尾也不能有回车换行等其他的组合符号。
 
-`response_headers`参数是`(header_name, header_value)`元组的列表，它必须是一个严格的Python列表类型，既`type(response_headers) is ListType`。如有需要，服务器**可以**随意修改它的内容。每一个`header_name`都必须是合法的HTTP首部`(header)`字段名（在[RFC 2616](http://www.faqs.org/rfcs/rfc2616.html)的4.2节中定义），末尾不能有冒号或其他标点符号。
+`response_headers`参数是`(header_name, header_value)`元组的列表，它必须是一个严格的Python列表类型，既`type(response_headers) is ListType`。如有需要，服务器**可以**随意修改它的内容。每一个`header_name`都必须是合法的HTTP首部`(header)`字段名（在[RFC2616](http://www.faqs.org/rfcs/rfc2616.html)的4.2节中定义），末尾不能有冒号或其他标点符号。
 
 所有的`header_value`中都**不能**含有包括回车换行在内的任何控制字符，无论是在中间嵌入还是在末尾追加（做这样的要求是为了方便那些必须检查响应头的服务器、网关和中间件，使它们将必需的解析工作复杂度降到最低）。
 
@@ -441,7 +441,7 @@ def start_response(status, response_headers, exc_info=None):
 
 在某些情况下，服务器或网关能够生成`Content-Length`首部，或至少避免关闭客户端连接。如果应用程序*没有*调用`write()`，且返回的可迭代对象的长度是1`(len() is 1)`，则服务器可以通过可迭代对象生成的第一个字符串的长度来确定`Content-Length`的值。
 
-另外，如果服务器和客户端都支持HTTP/1.1中的`"分块传输编码(chunked encoding)"`[[3]](#reference-3)特性，那么服务器**可以**利用`chunked编码`在每一次调用`write()`方法或迭代生成字符串时后发送一个数据块`(chunk)`，并为每一个数据块生成一个`Content-Length`。这样就可以让服务器保持与客户端的长连接。注意，如果真要这么做，服务器**必须**完全遵循[RFC 2616](http://tools.ietf.org/html/rfc2616.html)规范，否则就应另寻它法。
+另外，如果服务器和客户端都支持HTTP/1.1中的`"分块传输编码(chunked encoding)"`[[3]](#reference-3)特性，那么服务器**可以**利用`chunked编码`在每一次调用`write()`方法或迭代生成字符串时后发送一个数据块`(chunk)`，并为每一个数据块生成一个`Content-Length`。这样就可以让服务器保持与客户端的长连接。注意，如果真要这么做，服务器**必须**完全遵循[RFC2616](http://tools.ietf.org/html/rfc2616.html)规范，否则就应另寻它法。
 
 （注意：应用程序和中间件的输出**一定不能**使用任何类型的传输编码`(Transfer-Encoding)`技术，如`chunking`和`gzipping`，或是`"逐跳路由(hop-by-hop)"`。因为应用传输编码是服务器和网关的职责。详细信息可以参见下文的[HTTP的其他特性](#http的其他特性-other-http-features)章节）
 
@@ -491,7 +491,7 @@ WSGI服务器、网关和中间件**不允许**延迟发送任何数据块，它
 
 HTTP协议不提供对Unicode的直接支持，与此相同，本文档定义的接口也不提供对Unicode的支持。所有的编解码工作都必须在应用程序端来处理，所有传给服务器或从服务器传出的字符串必须是Python的标准字节字符串，而不能是Unicode对象。在要求使用字符串对象的地方使用Unicode对象，将会产生不可预料的结果。
 
-也要注意，作为状态字符串或响应首部传给`start_response()`方法的字符串在编码方面都必须遵循[RFC 2616](http://tools.ietf.org/html/rfc2616.html)规范。也就是说，它们必须使用ISO-8859-1字符集，或者使用[RFC 2047](http://tools.ietf.org/html/rfc2047.html)MIME编码。
+也要注意，作为状态字符串或响应首部传给`start_response()`方法的字符串在编码方面都必须遵循[RFC2616](http://tools.ietf.org/html/rfc2616.html)规范。也就是说，它们必须使用ISO-8859-1字符集，或者使用[RFC2047](http://tools.ietf.org/html/rfc2047.html)MIME编码。
 
 有些Python平台的`str`或者`StringType`类型实际上是基于Unicode的（如jython，ironPython，python 3000等），在其上实现本规范时，所有的“字符串”必须只包含以ISO-8859-1编码（从`\u0000`到`\u00FF`）表示的代码点`(code points)`。如果应用程序提供的字符串包含任何其它的 Unicode字符或代码点，将引发生严重错误。同样地，服务器和网关也**不允许**向应用程序提供任何Unicode字符。
 
@@ -536,13 +536,13 @@ except:
 2. 正常处理请求，但是提供给应用程序一个特殊的`wsgi.input`流，当/如果应用程序第一次尝试从输入流中读取的时候，就发送一个`"100 Continue"`响应。这个读取请求必须一直阻塞，直到客户端响应请求。  
 3. 一直等待，直到客户端确认服务器不支持`expect/continue`特性，然后客户端自己发来请求体。（这个方法较差，不推荐）
 
-注意，以上这些行为的限制不适用于HTTP 1.0请求，也不适用于那些往应用程序对象发送的请求。更多关于HTTP 1.1 Except/Continue的信息，请参阅[RFC 2616](http://tools.ietf.org/html/rfc2616.html)的8.2.3节和10.1.1节。
+注意，以上这些行为的限制不适用于HTTP 1.0请求，也不适用于那些往应用程序对象发送的请求。更多关于HTTP 1.1 Except/Continue的信息，请参阅[RFC2616](http://tools.ietf.org/html/rfc2616.html)的8.2.3节和10.1.1节。
 
 ### HTTP的其他特性 (Other HTTP Features)
 
-通常来说，服务器和网关应当“尽少干涉”，应当让应用程序对它们自己的输出有100%的控制权。服务器/网关只做一些小的改动并且这些小改动不会影响到应用程序响应的语义（semantics ）。应用程序的开发者总是有可能通过添加中间件来额外提供一些特性的，所以服务器/网关的开发者在实现服务器/网关的时候可以适当偏保守些。在某种意义上说，一个服务器应当将自己看作是一个HTTP“网关服务器（gateway server）”，应用程序则应当将自己看作是一个HTTP “源服务器（origin server）”（关于这些术语的定义，请参照 [RFC 2616](http://www.faqs.org/rfcs/rfc2616.html) 的1.3章节）
+通常来说，服务器和网关应当“尽少干涉”，应当让应用程序对它们自己的输出有100%的控制权。服务器/网关只做一些小的改动并且这些小改动不会影响到应用程序响应的语义（semantics ）。应用程序的开发者总是有可能通过添加中间件来额外提供一些特性的，所以服务器/网关的开发者在实现服务器/网关的时候可以适当偏保守些。在某种意义上说，一个服务器应当将自己看作是一个HTTP“网关服务器（gateway server）”，应用程序则应当将自己看作是一个HTTP “源服务器（origin server）”（关于这些术语的定义，请参照 [RFC2616](http://www.faqs.org/rfcs/rfc2616.html) 的1.3章节）
 
-然而，由于WSGI服务器和应用程序并不是通过HTTP通信的，[RFC 2616](http://www.faqs.org/rfcs/rfc2616.html) 中提到的“逐跳路由（hop-by-hop）”并没有应用到WSGI内部通信中。因此，WSGI应用程序一定不能生成任何"逐跳路由（hop-by-hop）"头信息[[4]](#refrence)，试图使用HTTP中要求它们生成这样的报头的特性，或者依赖任何传入的"逐跳路由（hop-by-hop）"`environ`字典中报头。WSGI服务器必须自己处理所有已经支持的"逐跳路由（hop-by-hop）"头信息，比如为每一个到达的信息做传输解码，解码也要包括那些分块编码（chunked-encoding）的，如果有的话。
+然而，由于WSGI服务器和应用程序并不是通过HTTP通信的，[RFC2616](http://www.faqs.org/rfcs/rfc2616.html) 中提到的“逐跳路由（hop-by-hop）”并没有应用到WSGI内部通信中。因此，WSGI应用程序一定不能生成任何"逐跳路由（hop-by-hop）"头信息[[4]](#refrence)，试图使用HTTP中要求它们生成这样的报头的特性，或者依赖任何传入的"逐跳路由（hop-by-hop）"`environ`字典中报头。WSGI服务器必须自己处理所有已经支持的"逐跳路由（hop-by-hop）"头信息，比如为每一个到达的信息做传输解码，解码也要包括那些分块编码（chunked-encoding）的，如果有的话。
 
 如果将这些原则应用到各种各样的HTTP特性中去，应该很容易得知：服务器可以通过`If-None-Match`及`If-Modified-Since`请求头，`Last-Modified`及`ETag`响应头等方式来处理缓存验证。然而，这并不是必须的，如果应用程序自身支持的话，则应用程序应当自己负责处理缓存验证，因为服务器/网关就没有说必须要做这样的验证。
 

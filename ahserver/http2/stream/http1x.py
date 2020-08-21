@@ -3,7 +3,6 @@
 __all__ = ["Http1xStream"]
 
 import logging
-import os
 
 from asyncio import Task, CancelledError
 

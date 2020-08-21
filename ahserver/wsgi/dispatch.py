@@ -50,18 +50,24 @@ class WSGIDispatcher(AsyncDispatcher):
         environ["PATH_INFO"] = path_and_query[0]
         if len(path_and_query) > 1:
             environ["QUERY_STRING"] = path_and_query[1]
-        environ["CONTENT_TYPE"] = request.get(HttpHeader.CONTENT_TYPE, b"").decode(LATIN1_ENCODING)
-        environ["CONTENT_LENGTH"] = request.get(HttpHeader.CONTENT_LENGTH, b"").decode(LATIN1_ENCODING)
         environ["SERVER_NAME"] = self.server_name
         environ["SERVER_PORT"] = self.server_port
         environ["SERVER_PROTOCOL"] = "HTTP/{}".format(request.version)
 
         # HTTP_Variables
         for field_name, field_value in request.headers.items():
-            field_name = field_name.upper().replace("-", "_")
-            field_name = "HTTP_{}".format(field_name)
-            field_value = field_value.decode(LATIN1_ENCODING)
-            environ[field_name] = field_value
+            if field_name == HttpHeader.CONTENT_LENGTH:
+                environ["CONTENT_LENGTH"] = field_value.decode(LATIN1_ENCODING)
+            elif field_name == HttpHeader.CONTENT_TYPE:
+                environ["CONTENT_TYPE"] = field_value.decode(LATIN1_ENCODING)
+            else:
+                field_name = field_name.upper().replace("-", "_")
+                field_name = "HTTP_{}".format(field_name)
+                field_value = field_value.decode(LATIN1_ENCODING)
+                environ[field_name] = field_value
+
+        if request.get("TRANSFER_ENCODING") == "chunked":
+            environ["wsgi.input_terminated"] = True
 
         #
         # Required WSGI variables

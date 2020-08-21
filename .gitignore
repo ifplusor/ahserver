@@ -7,6 +7,7 @@ Thumbs.db
 
 # VS Code
 .vscode/
+.VSCodeCounter/
 
 # PyCharm
 .idea/
