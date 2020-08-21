@@ -13,11 +13,12 @@ from ..http2.dispatch import AsyncDispatcher
 from ..http2.protocol import HttpHeader
 
 try:
-    from typing import TYPE_CHECKING, Any, Dict
+    from typing import TYPE_CHECKING
 except Exception:
     TYPE_CHECKING = False
 
 if TYPE_CHECKING:
+    from typing import Any, Dict
     from .request import WSGIHttpRequest
 
 
@@ -66,7 +67,7 @@ class WSGIDispatcher(AsyncDispatcher):
                 field_value = field_value.decode(LATIN1_ENCODING)
                 environ[field_name] = field_value
 
-        if request.get("TRANSFER_ENCODING") == "chunked":
+        if request.get(HttpHeader.TRANSFER_ENCODING) == b"chunked":
             environ["wsgi.input_terminated"] = True
 
         #

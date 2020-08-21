@@ -23,9 +23,18 @@ else:
             return Response("Hello, welcome to Flask world!\n", mimetype="text/plain")
 
         @app.route("/post", methods=["POST"])
-        def get_user_posts():
+        def get_user_post():
             data = request.get_data()
             return data
+
+        @app.route("/stream")
+        def return_stream():
+            def generate():
+                yield "hello, "
+                yield "world! "
+                yield "from stream"
+
+            return Response(generate())
 
         return app.wsgi_app
 

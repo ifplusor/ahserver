@@ -2,27 +2,24 @@
 
 __all__ = ["WSGIHttpResponse"]
 
-from wsgiref.handlers import format_date_time
-from datetime import datetime
-from time import mktime
-
-from .. import __version__
-
-from ..http2 import HttpRequest, HttpResponse
-from ..http2.protocol import HttpHeader
+from ..http2.response import SGIHttpResponse
 from ..util.iterator import AsyncIteratorWrapper
 
-server_version = "AHServer {}".format(__version__)
+try:
+    from typing import TYPE_CHECKING
+except Exception:
+    TYPE_CHECKING = False
+
+if TYPE_CHECKING:
+    from asyncio import AbstractEventLoop
+    from concurrent.futures import Executor
+    from typing import AsyncIterator
+    from ..http2 import HttpRequest
 
 
-def date_now():
-    now = datetime.now()
-    stamp = mktime(now.timetuple())
-    return format_date_time(stamp)
-
-
-class WSGIHttpResponse(HttpResponse):
-    def __init__(self, request: HttpRequest, loop=None, executor=None) -> None:
+class WSGIHttpResponse(SGIHttpResponse):
+    def __init__(self, request, loop=None, executor=None):
+        # type: (HttpRequest, AbstractEventLoop, Executor) -> None
         super(WSGIHttpResponse, self).__init__(request)
         self.loop = loop
         self.executor = executor
@@ -50,35 +47,9 @@ class WSGIHttpResponse(HttpResponse):
     def set_result(self, result):
         self.result = result
 
-    def normalize_headers(self):
-        if HttpHeader.DATE not in self.headers:
-            self.headers[HttpHeader.DATE] = date_now()
-        if HttpHeader.SERVER not in self.headers:
-            self.headers[HttpHeader.SERVER] = server_version
+    def body_iterator(self):  # type: () -> AsyncIterator[bytes]
+        return AsyncIteratorWrapper(self.result, loop=self.loop, executor=self.executor)
 
-    def send_status_and_headers(self, stream):
-        self.normalize_headers()
-
-        stream.send_data(self.render_status_line())
-        stream.send_data(self.render_headers())
-        stream.send_data(b"\r\n")
-
-    def send_body(self, stream, body):
-        if not self.headers_sent:
-            self.headers_sent = True
-            self.send_status_and_headers(stream)
-
-        stream.send_data(body)
-
-    async def respond(self, stream):
-        result = self.result
-        try:
-            async for body in AsyncIteratorWrapper(result, loop=self.loop, executor=self.executor):
-                if not body:  # don't send headers until body appears
-                    continue
-                self.send_body(stream, body)
-            if not self.headers_sent:  # send headers now if body was empty
-                self.send_status_and_headers(stream)
-        finally:
-            if hasattr(result, "close"):
-                result.close()
+    def close(self):
+        if hasattr(self.result, "close"):
+            self.result.close()

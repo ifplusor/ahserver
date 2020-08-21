@@ -9,11 +9,12 @@ from ..http2.constant import LATIN1_ENCODING
 from ..http2.dispatch import AsyncDispatcher
 
 try:
-    from typing import TYPE_CHECKING, Dict
+    from typing import TYPE_CHECKING
 except Exception:
     TYPE_CHECKING = False
 
 if TYPE_CHECKING:
+    from typing import Dict
     from .request import ASGIHttpRequest
 
 
