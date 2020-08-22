@@ -5,7 +5,7 @@ __all__ = ["Http2Protocol"]
 import asyncio
 import logging
 
-from asyncio import iscoroutinefunction, Task
+from asyncio import iscoroutinefunction
 from asyncio.protocols import Protocol
 
 try:
@@ -24,16 +24,17 @@ from ..http2.stream.http1x import Http1xStream
 from ..http2.stream.http2 import Http2Stream, Http2SuperStream
 
 try:
-    from typing import TYPE_CHECKING, Callable, Dict, Optional
+    from typing import TYPE_CHECKING
 except Exception:
     TYPE_CHECKING = False
 
 if TYPE_CHECKING:
+    from asyncio import Task
     from asyncio.events import AbstractEventLoop
     from asyncio.transports import Transport
-
+    from typing import Any, Callable, Dict, Optional, Coroutine
+    from ..http2 import HttpRequest, HttpResponse
     from ..http2.frame import HttpFrame
-    from ..http2.request import HttpRequest
 
 
 logger = logging.getLogger()
@@ -46,7 +47,7 @@ class Http2Protocol(Protocol):
     """
 
     def __init__(self, request_factory, loop=None, is_https=False, is_h2=False):
-        # type: (Callable[..., HttpRequest], Optional[AbstractEventLoop], bool, bool) -> None
+        # type: (Callable[..., HttpRequest], AbstractEventLoop, bool, bool) -> None
         if loop is None:
             loop = asyncio.get_event_loop()
 
@@ -123,11 +124,12 @@ class Http2Protocol(Protocol):
             self.stream_table[frame.identifier] = stream
         return stream.frame_received(frame)
 
-    def dispatch_request(self, request, callback=None):  # type: (HttpRequest, Optional[Callable]) -> None
+    def dispatch_request(self, request, callback=None):
+        # type: (HttpRequest, Callable[[Task[Optional[HttpResponse]]], Optional[Coroutine[Any, Any, None]]]) -> None
         dispatch_task = self._loop.create_task(dispatch_request(request))
         self._task_pool.add(dispatch_task)
 
-        def _callback_wrapper(task: Task):
+        def _callback_wrapper(task):  # type: (Task) -> None
             self._task_pool.remove(task)
 
             if self._transport.is_closing():

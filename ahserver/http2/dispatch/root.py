@@ -3,18 +3,21 @@
 __all__ = ["add_dispatcher", "dispatch_request"]
 
 import logging
+
 from asyncio import CancelledError
 
-from . import AsyncDispatcher, HttpDispatcher
+from . import AsyncDispatcher
 from ..protocol import HttpStatus, PopularHeaders
 from ..response import HttpResponse
 
 try:
-    from typing import TYPE_CHECKING, Optional
+    from typing import TYPE_CHECKING
 except Exception:
     TYPE_CHECKING = False
 
 if TYPE_CHECKING:
+    from typing import List, Optional
+    from . import HttpDispatcher
     from ..request import HttpRequest
 
 
@@ -26,12 +29,13 @@ class RootDispatcher(AsyncDispatcher):
 
     def __init__(self):
         super(RootDispatcher, self).__init__()
-        self.dispatchers = list()  # 职责链
+        # 职责链
+        self.dispatchers = list()  # type: List[HttpDispatcher]
 
-    def add_dispatcher(self, dispatcher: HttpDispatcher):
+    def add_dispatcher(self, dispatcher):  # type: (HttpDispatcher) -> None
         self.dispatchers.append(dispatcher)
 
-    async def dispatch(self, request):
+    async def dispatch(self, request):  # type: (HttpRequest) -> Optional[HttpResponse]
         # 为支持异步 http 路由，根调调度器需要异步环境
 
         for dispatcher in self.dispatchers:
@@ -60,7 +64,7 @@ class RootDispatcher(AsyncDispatcher):
 root_dispatcher = RootDispatcher()
 
 
-def add_dispatcher(dispatcher: HttpDispatcher):
+def add_dispatcher(dispatcher):  # type: (HttpDispatcher) -> None
     global root_dispatcher
     root_dispatcher.add_dispatcher(dispatcher)
 

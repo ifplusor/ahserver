@@ -9,13 +9,15 @@ __all__ = [
 ]
 
 from enum import IntEnum
+from ..util.parser import IntEnumParser
 
 try:
-    from typing import Dict, Union
+    from typing import TYPE_CHECKING
 except Exception:
-    pass
+    TYPE_CHECKING = False
 
-from ..util.parser import IntEnumParser
+if TYPE_CHECKING:
+    from typing import Dict, Union
 
 
 @IntEnumParser("frame_type")
@@ -35,14 +37,14 @@ class HttpFrameType(IntEnum):
 class HttpFrame:
     """frame in http/2"""
 
-    _type_class = dict()
+    _type2class_map_ = dict()
 
     @staticmethod
-    def create_frame(type, flags, identifier):
+    def create_frame(frame_type, flags, identifier):
         # type: (Union[HttpFrameType, int], int, int) -> HttpFrame
         if isinstance(type, int):
-            type = HttpFrameType.parse(type)
-        return HttpFrame._type_class[type](type, flags, identifier)
+            frame_type = HttpFrameType.parse(frame_type)
+        return HttpFrame._type2class_map_[frame_type](frame_type, flags, identifier)
 
     def __init__(self, type: HttpFrameType, flags: int, identifier: int):
         self.type = type
@@ -54,33 +56,27 @@ class HttpFrame:
 
 
 class HttpDataFrame(HttpFrame):
-    def __init__(
-        self, type: HttpFrameType, flags: int, identifier: int,
-    ):
+    def __init__(self, type, flags, identifier):  # type: (HttpFrameType, int, int) -> None
         super(HttpDataFrame, self).__init__(type, flags, identifier)
         self.data: bytes
 
 
-HttpFrame._type_class[HttpFrameType.DATA] = HttpDataFrame
+HttpFrame._type2class_map_[HttpFrameType.DATA] = HttpDataFrame
 
 
 class HttpHeadersFrame(HttpFrame):
-    def __init__(
-        self, type: HttpFrameType, flags: int, identifier: int,
-    ):
+    def __init__(self, type, flags, identifier):  # type: (HttpFrameType, int, int) -> None
         super(HttpHeadersFrame, self).__init__(type, flags, identifier)
         self.header_block_fragment: bytes
 
 
-HttpFrame._type_class[HttpFrameType.HEADERS] = HttpDataFrame
+HttpFrame._type2class_map_[HttpFrameType.HEADERS] = HttpDataFrame
 
 
 class HttpSettingsFrame(HttpFrame):
-    def __init__(
-        self, type: HttpFrameType, flags: int, identifier: int,
-    ):
+    def __init__(self, type, flags, identifier):  # type: (HttpFrameType, int, int) -> None
         super(HttpSettingsFrame, self).__init__(type, flags, identifier)
         self.settings: Dict[int, int] = dict()
 
 
-HttpFrame._type_class[HttpFrameType.SETTINGS] = HttpSettingsFrame
+HttpFrame._type2class_map_[HttpFrameType.SETTINGS] = HttpSettingsFrame

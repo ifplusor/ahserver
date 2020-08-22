@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 
 @add_metaclass(ABCMeta)
 class Response:
-    def __init__(self, stream=None):  # type: (Optional[HttpStream]) -> None
+    def __init__(self, stream=None):  # type: (HttpStream) -> None
         self._stream = stream
 
     @property
@@ -34,13 +34,13 @@ class Response:
         return self._stream
 
     @abstractmethod
-    async def respond(self, stream):  # type: (HttpStream) -> Optional[None]
+    async def respond(self, stream):  # type: (HttpStream) -> Optional[bytes]
         raise NotImplementedError()
 
 
 class HttpResponse(Response):
     def __init__(self, request, status=HttpStatus.OK, headers=None, body=None):
-        # type: (HttpRequest, Optional[Union[str, HttpStatus]], Optional[Dict[HttpHeader, str]], Optional[bytes]) -> None
+        # type: (HttpRequest, Union[str, HttpStatus], Dict[HttpHeader, str], bytes) -> None
         super(HttpResponse, self).__init__(request.stream)
         self._request = request
 
@@ -83,7 +83,7 @@ def date_now():
 
 class SGIHttpResponse(HttpResponse):
     def __init__(self, request, status=HttpStatus.OK, headers=None) -> None:
-        # type: (HttpRequest, Optional[Union[str, HttpStatus]], Optional[Dict[HttpHeader, str]]) -> None
+        # type: (HttpRequest, Union[str, HttpStatus], Dict[HttpHeader, str]) -> None
         super(SGIHttpResponse, self).__init__(request, status, headers)
         self.send_chunked = False
 

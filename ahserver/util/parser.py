@@ -2,25 +2,30 @@
 
 __all__ = ["FieldNameEnumParser", "IntEnumParser", "IntPairEnumParser"]
 
-from enum import Enum, EnumMeta, IntEnum
+try:
+    from typing import TYPE_CHECKING
+except Exception:
+    TYPE_CHECKING = False
 
-from typing import Type, Union
+if TYPE_CHECKING:
+    from enum import Enum, EnumMeta, IntEnum
+    from typing import Type, Union
 
 
 class EnumParser:
-    def __init__(self, enum_type):
+    def __init__(self, enum_type):  # type: (str) -> None
         self.enum_type = enum_type
 
-    def __call__(self, clazz: Type[Enum]):
+    def __call__(self, clazz):  # type: (Type[Enum]) -> Type[Enum]
         return clazz
 
 
 class FieldNameEnumParser(EnumParser):
-    def __call__(self, clazz: Type[Enum]):
+    def __call__(self, clazz):  # type: (Type[Enum]) -> Type[Enum]
         super(FieldNameEnumParser, self).__call__(clazz)
 
         @classmethod
-        def parse(cls: EnumMeta, filed_name: Union[str, bytes]):
+        def parse(cls, filed_name):  # type: (EnumMeta, Union[str, bytes]) -> Enum
             if isinstance(filed_name, bytes):
                 filed_name = filed_name.decode("ascii")
 
@@ -36,11 +41,11 @@ class FieldNameEnumParser(EnumParser):
 
 
 class IntEnumParser(EnumParser):
-    def __call__(self, clazz: Type[IntEnum]):
+    def __call__(self, clazz):  # type: (Type[IntEnum]) -> Type[IntEnum]
         super(IntEnumParser, self).__call__(clazz)
 
         @classmethod
-        def parse(cls: Type[IntEnum], int_value: int):
+        def parse(cls, int_value):  # type: (Type[IntEnum], int) -> Enum
             try:
                 return cls._value2member_map_[int_value]
             except KeyError:
@@ -52,14 +57,14 @@ class IntEnumParser(EnumParser):
 
 
 class IntPairEnumParser(EnumParser):
-    def __call__(self, clazz: Type[Enum]):
+    def __call__(self, clazz):  # type: (Type[Enum]) -> Type[Enum]
         """add common functions to class"""
         super(IntPairEnumParser, self).__call__(clazz)
 
         clazz._int2member_map_ = {value[0]: member for value, member in clazz._value2member_map_.items()}
 
         @classmethod
-        def parse(cls: Type[IntEnum], int_value: int):
+        def parse(cls, int_value):  # type: (Type[Enum], int) -> Enum
             try:
                 return cls._int2member_map_[int_value]
             except KeyError:

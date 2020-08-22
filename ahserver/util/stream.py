@@ -10,18 +10,27 @@ from io import BytesIO, SEEK_END, SEEK_SET
 from six import add_metaclass
 from threading import Condition as TCondition, RLock as TLock
 
-from typing import List, Optional
+try:
+    from typing import TYPE_CHECKING
+except Exception:
+    TYPE_CHECKING = False
+
+if TYPE_CHECKING:
+    from typing import ByteString, List, Optional
 
 
 @add_metaclass(ABCMeta)
 class StreamIO:
-    def __init__(self, initial_bytes: Optional[bytes]) -> None:
+    def __init__(self, initial_bytes):  # type: (Optional[bytes]) -> None
         self._buf = BytesIO(initial_bytes)
         self._pos = 0
         self._has_eof = False
 
+    def auto_reduce(self):
+        return self._buf.tell()
+
     @abstractmethod
-    def write(self, b: bytes):
+    def write(self, b):  # type: (bytes) -> None
         raise NotImplementedError()
 
     def eof_received(self):
@@ -29,7 +38,7 @@ class StreamIO:
 
 
 class AsyncStreamIO(StreamIO):
-    def __init__(self, initial_bytes: bytes = None) -> None:
+    def __init__(self, initial_bytes=None):  # type: (Optional[bytes]) -> None
         super(AsyncStreamIO, self).__init__(initial_bytes)
         self._alock = ALock()
         self._acond = ACondition(self._alock)
@@ -45,7 +54,7 @@ class AsyncStreamIO(StreamIO):
                     return self._buf.read()
                 return data
             finally:
-                self._pos = self._buf.tell()
+                self._pos = self.auto_reduce()
 
     async def _wake_read(self):
         async with self._acond:
@@ -75,12 +84,12 @@ class AsyncStreamIO(StreamIO):
 
 
 class SyncStreamIO(StreamIO):
-    def __init__(self, initial_bytes: bytes = None) -> None:
+    def __init__(self, initial_bytes=None):  # type: (Optional[bytes]) -> None
         super(SyncStreamIO, self).__init__(initial_bytes)
         self._lock = TLock()
         self._cond = TCondition(self._lock)
 
-    def read(self, size: int = -1):
+    def read(self, size=-1):  # type: (int) -> ByteString
         self._cond.acquire()
         try:
             self._buf.seek(self._pos, SEEK_SET)
@@ -94,15 +103,15 @@ class SyncStreamIO(StreamIO):
                     if size != -1:
                         size -= len(b)
 
-                    self._pos = self._buf.tell()
+                    self._pos = self.auto_reduce()
                     self._cond.wait(timeout=3)
                     self._buf.seek(self._pos, SEEK_SET)
             finally:
-                self._pos = self._buf.tell()
+                self._pos = self.auto_reduce()
         finally:
             self._cond.release()
 
-    def readline(self, size: int = -1):
+    def readline(self, size=-1):  # type: (int) -> ByteString
         self._cond.acquire()
         try:
             self._buf.seek(self._pos, SEEK_SET)
@@ -116,15 +125,15 @@ class SyncStreamIO(StreamIO):
                     if size != -1:
                         size -= len(b)
 
-                    self._pos = self._buf.tell()
+                    self._pos = self.auto_reduce()
                     self._cond.wait()
                     self._buf.seek(self._pos, SEEK_SET)
             finally:
-                self._pos = self._buf.tell()
+                self._pos = self.auto_reduce()
         finally:
             self._cond.release()
 
-    def readlines(self, hint: int = -1):
+    def readlines(self, hint=-1):  # type: (int) -> List[bytes]
         self._cond.acquire()
         try:
             while not self._has_eof:
@@ -133,7 +142,7 @@ class SyncStreamIO(StreamIO):
             try:
                 return self._buf.readlines(hint)
             finally:
-                self._pos = self._buf.tell()
+                self._pos = self.auto_reduce()
         finally:
             self._cond.release()
 
@@ -157,7 +166,7 @@ class SyncStreamIO(StreamIO):
         finally:
             self._cond.release()
 
-    def write(self, b: bytes):
+    def write(self, b):  # type: (bytes) -> None
         self._cond.acquire()
         try:
             self._buf.seek(0, SEEK_END)
@@ -166,7 +175,7 @@ class SyncStreamIO(StreamIO):
         finally:
             self._cond.release()
 
-    def writelines(self, lines: List[bytes]):
+    def writelines(self, lines):  # type: (List[bytes]) -> None
         self._cond.acquire()
         try:
             self._buf.seek(0, SEEK_END)

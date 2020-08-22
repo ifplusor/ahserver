@@ -12,11 +12,12 @@ from ..protocol import HttpVersion, HttpStatus, HttpHeader, PopularHeaders
 from ..response import HttpResponse
 
 try:
-    from typing import TYPE_CHECKING, Callable
+    from typing import TYPE_CHECKING
 except Exception:
     TYPE_CHECKING = False
 
 if TYPE_CHECKING:
+    from typing import Callable, Optional
     from ahserver.protocol.http2 import Http2Protocol
     from ..request import HttpRequest
 
@@ -32,7 +33,7 @@ class Http1xStream(HttpStream):
         self.enable_upgrade2 = enable_upgrade2
         self.parser = H2Parser(request_factory, self.on_message, self.protocol.on_http2_preface)
 
-    def data_received(self, data: bytes):
+    def data_received(self, data):  # type: (bytes) -> int
         # 递送给 parser 解协议
         return self.parser.feed(data, len(data))
 
@@ -66,16 +67,16 @@ class Http1xStream(HttpStream):
         # dispatch request
         self.protocol.dispatch_request(request, callback=self._respond)
 
-    def send_data(self, data):
+    def send_data(self, data):  # type: (bytes) -> None
         self.protocol.send_data(data)
 
-    async def send_response(self, response: HttpResponse):
+    async def send_response(self, response):  # type: (HttpResponse) -> None
         # write response
         data = await response.respond(self)
         if data is not None:
             self.send_data(data)
 
-    async def _respond(self, task: Task):
+    async def _respond(self, task):  # type: (Task[Optional[HttpResponse]]) -> None
         """dispatch 任务回调，回复 http 响应"""
         try:
             response = task.result()

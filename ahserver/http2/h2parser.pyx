@@ -439,8 +439,8 @@ cdef class H2Splitter:
         else:
             return -1
 
-    cdef void* _alloc_frame(self, uint8_t type, uint8_t flags, uint32_t identifier, ahp_strlen_t *payload):
-        frame: HttpFrame = HttpFrame.create_frame(type, flags, identifier)
+    cdef void* _alloc_frame(self, uint8_t frame_type, uint8_t flags, uint32_t identifier, ahp_strlen_t *payload):
+        frame: HttpFrame = HttpFrame.create_frame(frame_type, flags, identifier)
         if frame is None:
             return NULL
         # 将frame传递到c库中, 加引用

@@ -3,11 +3,12 @@
 __all__ = ["add_dispatcher", "dispatch_request", "AsyncDispatcher", "HttpDispatcher"]
 
 try:
-    from typing import TYPE_CHECKING, Optional
+    from typing import TYPE_CHECKING
 except Exception:
     TYPE_CHECKING = False
 
 if TYPE_CHECKING:
+    from typing import Optional
     from ..request import HttpRequest
     from ..response import HttpResponse
 
