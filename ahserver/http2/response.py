@@ -3,14 +3,12 @@
 __all__ = ["Response", "HttpResponse", "SGIHttpResponse"]
 
 from abc import ABCMeta, abstractmethod
-from datetime import datetime
 from six import add_metaclass
-from time import mktime
-from wsgiref.handlers import format_date_time
 
 from .constant import LATIN1_ENCODING
 from .protocol import HttpStatus, HttpHeader
 from .. import __version__
+from ..util.date import date_now
 from ..util.dict import CaseInsensitiveDict
 
 try:
@@ -73,12 +71,6 @@ class HttpResponse(Response):
 
 
 server_version = "AHServer {}".format(__version__)
-
-
-def date_now():
-    now = datetime.now()
-    stamp = mktime(now.timetuple())
-    return format_date_time(stamp)
 
 
 class SGIHttpResponse(HttpResponse):
