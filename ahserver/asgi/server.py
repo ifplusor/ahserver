@@ -12,7 +12,7 @@ import sys
 signames = {int(v): v.name for _, v in signal.__dict__.items() if isinstance(v, signal.Signals)}
 
 
-def create_ssl_context(certfile="simple/test.crt", keyfile="simple/test.key"):
+def create_ssl_context(certfile, keyfile):
     import ssl
 
     print("ssl has ALPN: {}".format(ssl.HAS_ALPN))
