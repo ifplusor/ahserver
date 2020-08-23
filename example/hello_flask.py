@@ -10,7 +10,14 @@ if __name__ == "__main__":
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
     # 启动服务
-    server(__file__ + ":app", worker_nums=1)
+    server(
+        __file__ + ":app",
+        port=8443,
+        worker_nums=1,
+        enable_https=True,
+        certfile="example/test.crt",
+        keyfile="example/tast.crt",
+    )
 else:
 
     def create_application():
