@@ -2,15 +2,24 @@
 
 if __name__ == "__main__":
     import asyncio
+    import os
     import uvloop
 
-    from ahserver.asgi import server
+    from ahserver.application.asgi import server
 
     # 设置 uvloop
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
     # 启动服务
-    server(__file__ + ":app", worker_nums=1)
+    server(
+        __file__ + ":app",
+        port=8080,
+        # port=8443,
+        worker_nums=1,
+        # enable_https=True,
+        certfile=os.path.join(os.path.dirname(__file__), "test.crt"),
+        keyfile=os.path.join(os.path.dirname(__file__), "test.key"),
+    )
 else:
 
     def create_application():

@@ -18,11 +18,11 @@
  *   EAGAIN  - 需要更多数据
  *   EBADMSG - 报文格式错误
  */
-
 #ifndef AHPARSER_AHP_H_
 #define AHPARSER_AHP_H_
 
 #include "parser.h"
 #include "splitter.h"
+#include "hpack.h"
 
 #endif  // AHPARSER_AHP_H_

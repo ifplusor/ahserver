@@ -1,0 +1,57 @@
+# encoding=utf-8
+
+
+# General Header Fields
+CACHE_CONTROL = b"Cache-Control".lower()
+CONNECTION = b"Connection".lower()
+DATE = b"Date".lower()
+PRAGMA = b"Pragma".lower()
+TRAILER = b"Trailer".lower()
+TRANSFER_ENCODING = b"Transfer-Encoding".lower()
+UPGRADE = b"Upgrade".lower()
+VIA = b"Via".lower()
+WARNING = b"Warning".lower()
+
+# Request Header Fields
+ACCEPT = b"Accept".lower()
+ACCEPT_CHARSET = b"Accept-Charset".lower()
+ACCEPT_ENCODING = b"Accept-Encoding".lower()
+ACCEPT_LANGUAGE = b"Accept-Language".lower()
+AUTHORIZATION = b"Authorization".lower()
+EXCEPT = b"Except".lower()
+FROM = b"From".lower()
+HOST = b"Host".lower()
+IF_MATCH = b"If-Match".lower()
+IF_MODIFIED_SINCE = b"If-Modified-Since".lower()
+IF_NONE_MATCH = b"If-None-Match".lower()
+IF_Range = b"If-Range".lower()
+IF_UNMODIFIED_SINCE = b"If-Unmodified-Since".lower()
+MAX_FORWARDS = b"Max-Forwards".lower()
+PROXY_AUTHORIZATION = b"Proxy-Authorization".lower()
+RANGE = b"Range".lower()
+REFERER = b"Referer".lower()
+TE = b"TE".lower()
+USER_AGENT = b"User-Agent".lower()
+HTTP2_SETTINGS = b"HTTP2-Settings".lower()
+
+# Response Header Fields
+ACCEPT_RANGES = b"Accept-Ranges".lower()
+AGE = b"Age".lower()
+ETAG = b"Etag".lower()
+LOCATION = b"Location".lower()
+PROXY_AUTHENTICATE = b"Proxy-Authenticate".lower()
+RETRY_AFTER = b"Retry-After".lower()
+SERVER = b"Server".lower()
+VARY = b"Vary".lower()
+WWW_AUTHENTICATE = b"WWW-Authenticate".lower()
+
+# Entity Header Fields
+ALLOW = b"Allow".lower()
+CONTENT_ENCODING = b"Content-Encoding".lower()
+CONTENT_LANGUAGE = b"Content-Language".lower()
+CONTENT_LENGTH = b"Content-Length".lower()
+CONTENT_MD5 = b"Content-MD5".lower()
+CONTENT_RANGE = b"Content-Range".lower()
+CONTENT_TYPE = b"Content-Type".lower()
+EXPIRES = b"Expires".lower()
+LAST_MODIFIED = b"Last-Modified".lower()

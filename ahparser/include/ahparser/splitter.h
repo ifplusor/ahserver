@@ -3,7 +3,6 @@
  * author: James Yin<ywhjames@hotmail.com>
  * description: http 2.0 frame splitter
  */
-
 #ifndef AHPARSER_SPLITTER_H_
 #define AHPARSER_SPLITTER_H_
 
@@ -11,6 +10,15 @@
 
 #include "msgbuf.h"
 #include "strlen.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef enum ahp_splitter_state {
+  AHP_SPLITTER_STATE_IDLE,
+  AHP_SPLITTER_STATE_WAIT_CONTINUATION_FRAME
+} ahp_splitter_state_t;
 
 typedef enum ahp_frame_type {
   AHP_FRAME_TYPE_DATA = 0x00,
@@ -64,19 +72,28 @@ typedef int (*aph_frame_received_callback)(ahp_splitter_t* splitter, void* frame
 typedef int (*ahp_data_frame_callback)(ahp_splitter_t* splitter, void* frame, ahp_strlen_t* data);
 typedef int (*ahp_headers_frame_callback)(ahp_splitter_t* splitter, void* frame, ahp_strlen_t* header_block_fragment);
 typedef int (*aph_settings_frame_callback)(ahp_splitter_t* splitter, void* frame, uint16_t identifier, uint32_t value);
+typedef int (*ahp_window_update_frame_callback)(ahp_splitter_t* splitter, void* frame, uint32_t increment);
 
 struct ahp_splitter {
+  ahp_splitter_state_t state;
+
   void* data;
 
   ahp_alloc_frame_delegate alloc_frame;
   ahp_free_frame_delegate free_frame;
 
   aph_frame_received_callback on_frame_received;
+
   ahp_data_frame_callback on_data_frame;
   ahp_headers_frame_callback on_headers_frame;
   aph_settings_frame_callback on_settings_frame;
+  ahp_window_update_frame_callback on_window_update_frame;
 };
 
 int ahp_split_frame(ahp_splitter_t* splitter, ahp_msgbuf_t* msg);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif  // AHPARSER_SPLITTER_H_

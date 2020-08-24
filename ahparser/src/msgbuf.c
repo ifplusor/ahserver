@@ -3,12 +3,11 @@
  * author:       James Yin<ywhjames@hotmail.com>
  * description:  message buffer
  */
+#include "ahparser/msgbuf.h"
 
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include <ahparser/msgbuf.h>
 
 int ahp_msgbuf_init(ahp_msgbuf_t* buf, long size) {
   if (buf == NULL) {
@@ -16,7 +15,7 @@ int ahp_msgbuf_init(ahp_msgbuf_t* buf, long size) {
   }
 
   if (size < 0) {
-    size = 4 * 1024;  // 4k
+    size = 32;  // 32 bytes
   }
 
   // 4 字节对齐
@@ -47,29 +46,29 @@ void ahp_msgbuf_free(ahp_msgbuf_t* buf) {
   buf->size = buf->start = buf->end = 0;
 }
 
-int ahp_msgbuf_append(ahp_msgbuf_t* buf, const char* data, unsigned long len) {
-  size_t rlen = buf->end - buf->start;  // 缓冲区中剩余数据长度
+int ahp_msgbuf_append(ahp_msgbuf_t* buf, const char* data, size_t len) {
+  size_t remains_len = buf->end - buf->start;  // 缓冲区中剩余数据长度
 
   // 调整缓冲区
 
-  if (rlen == 0) {
+  if (remains_len == 0) {
     // 空，重置 (尽量避免前一次新增的小块数据引起 memmove 调用)
     buf->start = buf->end = 0;
   }
 
   if (len > buf->size - buf->end) {
-    if (rlen != 0) {
+    if (remains_len != 0) {
       // 溢出，移动数据
-      memmove(buf->base, buf->base + buf->start, rlen);
+      memmove(buf->base, buf->base + buf->start, remains_len);
       buf->start = 0;
-      buf->end = rlen;
+      buf->end = remains_len;
     }
 
-    if (len > buf->size - rlen) {
+    if (len > buf->size - remains_len) {
       // 空间不足，扩充
       size_t new_size = buf->size * 2;
-      if (new_size < rlen + len) {
-        new_size = rlen + len;
+      if (new_size < remains_len + len) {
+        new_size = remains_len + len;
       }
 
       // 4 字节对齐
@@ -88,7 +87,14 @@ int ahp_msgbuf_append(ahp_msgbuf_t* buf, const char* data, unsigned long len) {
   }
 
   // 拷贝数据到缓冲区
-  memcpy(buf->base + buf->end, data, len);
+  if (len < 32) {
+    char* write = buf->base + buf->end;
+    for (int i = 0; i < len; i++) {
+      write[i] = data[i];
+    }
+  } else {
+    memcpy(buf->base + buf->end, data, len);
+  }
   buf->end += len;
 
   return 0;

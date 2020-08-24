@@ -1,6 +1,6 @@
 # encoding=utf-8
 
-__all__ = ["FieldNameEnumParser", "IntEnumParser", "IntPairEnumParser"]
+__all__ = ["FieldNameEnumParser", "IntPairEnumParser"]
 
 try:
     from typing import TYPE_CHECKING
@@ -8,7 +8,7 @@ except Exception:
     TYPE_CHECKING = False
 
 if TYPE_CHECKING:
-    from enum import Enum, EnumMeta, IntEnum
+    from enum import Enum, EnumMeta
     from typing import Type, Union
 
 
@@ -34,22 +34,6 @@ class FieldNameEnumParser(EnumParser):
                 return cls[key]
 
             raise Exception("Unknown {}.".format(self.enum_type))
-
-        clazz.parse = parse
-
-        return clazz
-
-
-class IntEnumParser(EnumParser):
-    def __call__(self, clazz):  # type: (Type[IntEnum]) -> Type[IntEnum]
-        super(IntEnumParser, self).__call__(clazz)
-
-        @classmethod
-        def parse(cls, int_value):  # type: (Type[IntEnum], int) -> Enum
-            try:
-                return cls._value2member_map_[int_value]
-            except KeyError:
-                raise Exception("Unknown {}.".format(self.enum_type))
 
         clazz.parse = parse
 

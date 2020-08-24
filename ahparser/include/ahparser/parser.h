@@ -3,7 +3,6 @@
  * author: James Yin<ywhjames@hotmail.com>
  * description: http parser
  */
-
 #ifndef AHPARSER_PARSER_H_
 #define AHPARSER_PARSER_H_
 
@@ -13,12 +12,15 @@
 #include "msgbuf.h"
 #include "strlen.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef enum ahp_parser_state {
   AHP_PARSER_STATE_IDLE,
   AHP_PARSER_STATE_PARSE_REQUEST_LINE,
   AHP_PARSER_STATE_PARSE_RESPONSE_LINE,
   AHP_PARSER_STATE_PARSE_MESSAGE_HEADER,
-  AHP_PARSER_STATE_PARSE_MESSAGE_HEADER_CRLF,
   AHP_PARSER_STATE_PARSE_BODY,
   AHP_PARSER_STATE_PARSE_CHUNKED_HEAD,
   AHP_PARSER_STATE_PARSE_CHUNKED_DATA,
@@ -41,8 +43,7 @@ typedef int (*ahp_message_body_callback)(ahp_parser_t* parser, ahp_strlen_t* bod
 
 struct ahp_parser {
   ahp_parser_state_t state;
-  long content_length;
-  long chunk_size;
+  long expected_length;
 
   void* data;
 
@@ -62,11 +63,8 @@ int ahp_parse_body_length(ahp_parser_t* parser, ahp_msgbuf_t* msg, long length);
 int ahp_parse_body_chunked(ahp_parser_t* parser, ahp_msgbuf_t* msg);
 int ahp_parse_body(ahp_parser_t* parser, ahp_msgbuf_t* msg);
 
-//
-// hacker method
-
-static inline void _ahp_request_header_will_end(ahp_parser_t* parser) {
-  parser->state = AHP_PARSER_STATE_PARSE_MESSAGE_HEADER_CRLF;
+#ifdef __cplusplus
 }
+#endif
 
 #endif  // AHPARSER_PARSER_H_

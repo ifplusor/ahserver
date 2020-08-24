@@ -2,13 +2,16 @@
  * file:         splitter.c
  * author:       James Yin<ywhjames@hotmail.com>
  * description:  simple http2 frame splitter
- * reference:    rfc7540
+ * reference:
+ *
+ *     RFC5234: https://tools.ietf.org/html/rfc7540
+ *
  */
+#include "strbuf.h"
 
 #include <errno.h>
 
-#include <ahparser/splitter.h>
-#include <ahparser/strbuf.h>
+#include "ahparser/splitter.h"
 
 static const uint32_t OFFSET_0 = 1;
 static const uint32_t OFFSET_1 = 256;
@@ -64,7 +67,7 @@ int ahp_parse_data_frame(ahp_splitter_t* splitter, uint8_t flags, ahp_strlen_t* 
     }
   }
   ahp_strlen_t data = {.str = cursor, .len = payload->len - (cursor - payload->str) - pad_length};
-  return 0;
+  return splitter->on_data_frame(splitter, frame, &data);
 }
 
 int ahp_parse_headers_frame(ahp_splitter_t* splitter, uint8_t flags, ahp_strlen_t* payload, void* frame) {
@@ -100,7 +103,7 @@ int ahp_parse_headers_frame(ahp_splitter_t* splitter, uint8_t flags, ahp_strlen_
     cursor += 1;
   }
   ahp_strlen_t header_block_fragment = {.str = cursor, .len = payload->len - (cursor - payload->str) - pad_length};
-  return 0;
+  return splitter->on_headers_frame(splitter, frame, &header_block_fragment);
 }
 
 int ahp_parse_priority_frame(ahp_splitter_t* splitter, uint8_t flags, ahp_strlen_t* payload, void* frame) {
@@ -111,6 +114,7 @@ int ahp_parse_priority_frame(ahp_splitter_t* splitter, uint8_t flags, ahp_strlen
    *    |   Weight (8)  |
    *    +-+-------------+
    */
+  return EBADMSG;
 }
 
 int ahp_parse_rst_stream_frame(ahp_splitter_t* splitter, uint8_t flags, ahp_strlen_t* payload, void* frame) {
@@ -119,6 +123,7 @@ int ahp_parse_rst_stream_frame(ahp_splitter_t* splitter, uint8_t flags, ahp_strl
    *    |                        Error Code (32)                        |
    *    +---------------------------------------------------------------+
    */
+  return EBADMSG;
 }
 
 int ahp_parse_settings_frame(ahp_splitter_t* splitter, uint8_t flags, ahp_strlen_t* payload, void* frame) {
@@ -137,7 +142,10 @@ int ahp_parse_settings_frame(ahp_splitter_t* splitter, uint8_t flags, ahp_strlen
     cursor += 2;
     uint32_t value = parse_uint32(cursor);
     cursor += 4;
-    splitter->on_settings_frame(splitter, frame, identifier, value);
+    int err = splitter->on_settings_frame(splitter, frame, identifier, value);
+    if (err != 0) {
+      return err;
+    }
   }
   return 0;
 }
@@ -154,6 +162,7 @@ int ahp_parse_push_promise_frame(ahp_splitter_t* splitter, uint8_t flags, ahp_st
    *    |                           Padding (*)                       ...
    *    +---------------------------------------------------------------+
    */
+  return EBADMSG;
 }
 
 int ahp_parse_ping_frame(ahp_splitter_t* splitter, uint8_t flags, ahp_strlen_t* payload, void* frame) {
@@ -164,6 +173,7 @@ int ahp_parse_ping_frame(ahp_splitter_t* splitter, uint8_t flags, ahp_strlen_t* 
    *    |                                                               |
    *    +---------------------------------------------------------------+
    */
+  return EBADMSG;
 }
 
 int ahp_parse_goway_frame(ahp_splitter_t* splitter, uint8_t flags, ahp_strlen_t* payload, void* frame) {
@@ -176,6 +186,7 @@ int ahp_parse_goway_frame(ahp_splitter_t* splitter, uint8_t flags, ahp_strlen_t*
    *    |                  Additional Debug Data (*)                    |
    *    +---------------------------------------------------------------+
    */
+  return EBADMSG;
 }
 
 int ahp_parse_window_update_frame(ahp_splitter_t* splitter, uint8_t flags, ahp_strlen_t* payload, void* frame) {
@@ -184,6 +195,12 @@ int ahp_parse_window_update_frame(ahp_splitter_t* splitter, uint8_t flags, ahp_s
    *    |R|              Window Size Increment (31)                     |
    *    +-+-------------------------------------------------------------+
    */
+  uint32_t increment = parse_uint31(frame);
+  int err = splitter->on_window_update_frame(splitter, frame, increment);
+  if (err != 0) {
+    return err;
+  }
+  return 0;
 }
 
 int ahp_parse_continuation_frame(ahp_splitter_t* splitter, uint8_t flags, ahp_strlen_t* payload, void* frame) {
@@ -192,19 +209,44 @@ int ahp_parse_continuation_frame(ahp_splitter_t* splitter, uint8_t flags, ahp_st
    *    |                   Header Block Fragment (*)                 ...
    *    +---------------------------------------------------------------+
    */
+  return EBADMSG;
 }
 
-int ahp_check_frame(uint8_t type, uint8_t flags, uint32_t identifier, ahp_strlen_t* payload) {
+int ahp_check_frame(uint8_t type, uint8_t flags, uint32_t identifier, ahp_strlen_t* payload, uint32_t length) {
+  int error = 0;
   switch (type) {
     case AHP_FRAME_TYPE_SETTINGS:
+      // SETTINGS frames always apply to a connection, never a single stream. The stream identifier for a SETTINGS frame
+      // MUST be zero (0x0). If an endpoint receives a SETTINGS frame whose stream identifier field is anything other
+      // than 0x0, the endpoint MUST respond with a connection error (Section 5.4.1) of type PROTOCOL_ERROR.
+      if (identifier != 0) {
+        error = AHP_ERROR_PROTOCOL_ERROR;
+        break;
+      }
+      // ACK (0x1): When set, bit 0 indicates that this frame acknowledges receipt and application of the peer's
+      // SETTINGS frame. When this bit is set, the payload of the SETTINGS frame MUST be empty. Receipt of a SETTINGS
+      // frame with the ACK flag set and a length field value other than 0 MUST be treated as a connection error
+      // (Section 5.4.1) of type FRAME_SIZE_ERROR. For more information, see Section 6.5.3 ("Settings Synchronization").
       if (flags & AHP_FRAME_FLAG_ACK && payload->len != 0) {
-        return -AHP_ERROR_FRAME_SIZE_ERROR;
+        error = AHP_ERROR_FRAME_SIZE_ERROR;
+        break;
+      }
+      // A SETTINGS frame with a length other than a multiple of 6 octets MUST be treated as a connection error
+      // (Section 5.4.1) of type FRAME_SIZE_ERROR.
+      if (payload->len % 6 != 0) {
+        error = AHP_ERROR_FRAME_SIZE_ERROR;
+        break;
       }
       break;
+    case AHP_FRAME_TYPE_WINDOW_UPDATE:
+      if (length != 4) {
+        error = AHP_ERROR_FRAME_SIZE_ERROR;
+        break;
+      }
     default:
       break;
   }
-  return 0;
+  return -error;
 }
 
 typedef int (*ahp_parse_frame_func)(ahp_splitter_t*, uint8_t, ahp_strlen_t*, void*);
@@ -243,7 +285,7 @@ int ahp_split_frame(ahp_splitter_t* splitter, ahp_msgbuf_t* msg) {
     }
 
     uint8_t type = parse_uint8(packet + 3);
-    if (type > AHP_ERROR_HTTP_1_1_REQUIRED) {
+    if (type > AHP_FRAME_TYPE_CONTINUAION) {
       return EBADMSG;
     }
 
@@ -252,7 +294,7 @@ int ahp_split_frame(ahp_splitter_t* splitter, ahp_msgbuf_t* msg) {
     ahp_strlen_t payload = {.str = packet + 9, .len = length};
 
     // check
-    err = ahp_check_frame(type, flags, identifier, &payload);
+    err = ahp_check_frame(type, flags, identifier, &payload, length);
     if (err != 0) {
       return err;
     }

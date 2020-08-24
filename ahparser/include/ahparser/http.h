@@ -3,9 +3,12 @@
  * author:       James Yin<ywhjames@hotmail.com>
  * description:  http protocol enumeration value
  */
-
 #ifndef AHPARSER_HTTP_H_
 #define AHPARSER_HTTP_H_
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 typedef enum {
   AHP_METHOD_OPTIONS = 0,
@@ -20,5 +23,9 @@ typedef enum {
 } ahp_method_t;
 
 typedef enum { AHP_VERSION_10 = 0, AHP_VERSION_11, AHP_VERSION_20 } ahp_version_t;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif  // AHPARSER_HTTP_H_

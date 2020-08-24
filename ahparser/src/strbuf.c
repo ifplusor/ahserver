@@ -3,10 +3,9 @@
  * author:       James Yin<ywhjames@hotmail.com>
  * description:  string buffer
  */
+#include "strbuf.h"
 
 #include <string.h>
-
-#include <ahparser/strbuf.h>
 
 /**
  * 取得由字母表指定的字符序列，并以指定字符表中的字符结束

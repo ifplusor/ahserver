@@ -13,7 +13,7 @@ if __name__ == "__main__":
     import asyncio
     import uvloop
 
-    from ahserver.wsgi import server
+    from ahserver.application.wsgi import server
 
     # 设置 uvloop
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
@@ -51,7 +51,7 @@ if __name__ == "__main__":
     import asyncio
     import uvloop
 
-    from ahserver.asgi import server
+    from ahserver.application.asgi import server
 
     # 设置 uvloop
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())

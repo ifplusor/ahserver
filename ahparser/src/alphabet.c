@@ -8,8 +8,7 @@
  *     RFC7230: https://tools.ietf.org/html/rfc7230
  *
  */
-
-#include <ahparser/alphabet.h>
+#include "alphabet.h"
 
 /*
  * In Section 1.2. of [RFC7230], Syntax Notation:

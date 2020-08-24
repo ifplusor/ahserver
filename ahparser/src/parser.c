@@ -9,13 +9,13 @@
  *     RFC7231: https://tools.ietf.org/html/rfc7231
  *
  */
+#include "ahparser/parser.h"
 
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
 
-#include <ahparser/parser.h>
-#include <ahparser/strbuf.h>
+#include "strbuf.h"
 
 /**
  * 解码 HEX
@@ -262,24 +262,26 @@ int parse_version(strbuf_t* buf, ahp_version_t* version) {
     return -1;
   }
 
-  if (buf->pos[1] == AHP_RULES_DOT) {
-    char major = (char)buf->pos[0];
-    char minor = (char)buf->pos[2];
-    if (major == '1') {
-      if (minor == '0') {
-        *version = AHP_VERSION_10;
-      } else if (minor == '1') {
-        *version = AHP_VERSION_11;
-      } else {
-        return -1;
-      }
-    } else if (major == '2' && minor == '0') {
+  int major = strbuf_pop(buf);
+  if (strbuf_expectc(buf, '.') != 0) {
+    return -1;
+  }
+  int minor = strbuf_pop(buf);
+
+  if (major == '1') {
+    if (minor == '1') {
+      *version = AHP_VERSION_11;
+    } else if (minor == '0') {
+      *version = AHP_VERSION_10;
+    } else {
+      return -1;
+    }
+  } else if (major == '2') {
+    if (minor == '0') {
       *version = AHP_VERSION_20;
     } else {
       return -1;
     }
-
-    buf->pos += 3;
   } else {
     return -1;
   }
@@ -485,28 +487,6 @@ int ahp_parse_request(ahp_parser_t* parser, ahp_msgbuf_t* msg) {
         }
       }
 
-      case AHP_PARSER_STATE_PARSE_MESSAGE_HEADER_CRLF: {
-        unsigned char* start = strbuf_pos(&message);
-        strbuf_t line;
-
-        // 从缓冲区中读取一行
-        err = ahp_consume_line(&message, &line);
-        if (err) {
-          if (err == EAGAIN) {
-            strbuf_rewind(&message, start);
-          }
-          goto error;
-        }
-
-        if (line.size <= 2) {
-          // 空行 ( 连续两个 crlf ), request header 结束
-          goto success;
-        }
-
-        err = EBADMSG;
-        goto error;
-      }
-
       default:
         // unexpected state, parser 不可用
         return EBUSY;
@@ -528,18 +508,18 @@ finally:
 
 int ahp_parse_length_body(ahp_parser_t* parser, strbuf_t* msg) {
   // 按长度定位 body
-  if (parser->content_length > 0) {
+  if (parser->expected_length > 0) {
     long size = strbuf_remain_length(msg);
-    if (size > parser->content_length) {
-      size = parser->content_length;
+    if (size > parser->expected_length) {
+      size = parser->expected_length;
     }
     ahp_strlen_t body;
     strbuf_consume_len(msg, size, &body);
     if (parser->on_message_body(parser, &body) != 0) {
       return EBADMSG;
     }
-    parser->content_length -= size;
-    if (parser->content_length > 0) {
+    parser->expected_length -= size;
+    if (parser->expected_length > 0) {
       return EAGAIN;
     }
   }
@@ -562,7 +542,7 @@ int ahp_parse_chunked_size(ahp_parser_t* parser, strbuf_t* msg) {
   if (ch != '\r' && ch != ';') {
     return EBADMSG;
   } else {
-    parser->chunk_size = htoi(&chunk_size);
+    parser->expected_length = htoi(&chunk_size);
     return 0;
   }
 }
@@ -598,18 +578,18 @@ int ahp_parse_chunked_ext(ahp_parser_t* parser, strbuf_t* msg) {
 }
 
 int ahp_parse_chunked_data(ahp_parser_t* parser, strbuf_t* msg) {
-  if (parser->chunk_size > 0) {
+  if (parser->expected_length > 0) {
     long size = strbuf_remain_length(msg);
-    if (size > parser->chunk_size) {
-      size = parser->chunk_size;
+    if (size > parser->expected_length) {
+      size = parser->expected_length;
     }
     ahp_strlen_t data;
     strbuf_consume_len(msg, size, &data);
     if (parser->on_message_body(parser, &data) != 0) {
       return EBADMSG;
     }
-    parser->chunk_size -= size;
-    if (parser->chunk_size > 0) {
+    parser->expected_length -= size;
+    if (parser->expected_length > 0) {
       return EAGAIN;
     }
   }
@@ -712,7 +692,7 @@ int ahp_parse_body(ahp_parser_t* parser, ahp_msgbuf_t* msg) {
           goto error;
         }
 
-        if (parser->chunk_size <= 0) {
+        if (parser->expected_length <= 0) {
           // last-chunk
           parser->state = AHP_PARSER_STATE_PARSE_CHUNKED_TRAILER;
           break;
@@ -764,7 +744,7 @@ int ahp_parse_body_length(ahp_parser_t* parser, ahp_msgbuf_t* msg, long length) 
   }
 
   // 初始化
-  parser->content_length = length;
+  parser->expected_length = length;
   parser->state = AHP_PARSER_STATE_PARSE_BODY;
 
   return ahp_parse_body(parser, msg);
