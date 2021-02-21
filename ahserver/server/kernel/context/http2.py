@@ -32,6 +32,7 @@ class Http2Context(HttpContext):
         self.stream_table = {0: self.super_stream}  # type: Dict[int, Http2Stream]
 
     def on_http1_request(self, request):
+        # TODO: HTTP2_SETTINGS
         stream = Http2PlainStream(self, 1)
         stream.state = StreamState.HALF_CLOSED_REMOTE
         stream.request = request
@@ -61,7 +62,6 @@ class Http2Context(HttpContext):
             return continuation_frame
         else:
             return create_frame(frame_type, flags, identifier)
-
     def parse(self):  # type: () -> int
         return self.splitter.parse()
 

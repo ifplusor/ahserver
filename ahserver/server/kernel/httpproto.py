@@ -93,13 +93,13 @@ class HttpProtocolStack:
             # send connection preface(server side)
             self.context.send_preface()
 
-            # 解码缓存区剩余数据
-            self.context.parse()
-
             # upgrade from http1.1
             if not self.on_ssl:
                 self.context.on_http1_request(self.request_before_upgrade)
                 self.request_before_upgrade = None
+
+            # 解码缓存区剩余数据
+            self.context.parse()
 
     def upgrade_http2(self, request):  # type: (HttpRequest) -> bool
         """升级 http2"""

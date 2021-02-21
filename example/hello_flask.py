@@ -13,10 +13,10 @@ if __name__ == "__main__":
     # 启动服务
     server(
         __file__ + ":app",
-        # port=8080,
-        port=8443,
+        port=8080,
+        # port=8443,
         worker_nums=1,
-        enable_https=True,
+        # enable_https=True,
         certfile=os.path.join(os.path.dirname(__file__), "test.crt"),
         keyfile=os.path.join(os.path.dirname(__file__), "test.key"),
     )
